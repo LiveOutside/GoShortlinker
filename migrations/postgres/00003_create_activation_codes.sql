@@ -1,6 +1,6 @@
 -- +goose Up
 CREATE TABLE activation_codes (
-    id INT PRIMARY KEY,
+    id SERIAL PRIMARY KEY,
     user_id INT UNIQUE NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     code_hash TEXT NOT NULL,
     expires_at TIMESTAMPTZ NOT NULL,
