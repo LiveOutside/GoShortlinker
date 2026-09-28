@@ -1,13 +1,19 @@
 package links
 
-import "time"
+import (
+	"github.com/jackc/pgx/v5/pgtype"
+)
 
 type SaveResponse struct {
-	ID            uint       `json:"id"`
-	ShareCode     string     `json:"share_code"`
-	RedirectTimer int        `json:"redirect_timer"`
-	RedirectTo    string     `json:"redirect_to"`
-	ValidUntil    *time.Time `json:"valid_until"`
-	IsActive      bool       `json:"is_active"`
-	DateCreated   time.Time  `json:"date_created"`
+	ID            int32              `json:"id"`
+	ShareCode     string             `json:"share_code"`
+	RedirectTimer int32              `json:"redirect_timer"`
+	RedirectTo    string             `json:"redirect_to"`
+	ValidUntil    pgtype.Timestamptz `json:"valid_until"`
+	IsActive      bool               `json:"is_active"`
+	DateCreated   pgtype.Timestamptz `json:"date_created"`
+}
+
+type LinkResponse struct {
+	ShortenedLink string `json:"shortened_link"`
 }

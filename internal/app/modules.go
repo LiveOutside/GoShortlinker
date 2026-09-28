@@ -3,15 +3,33 @@ package app
 import (
 	"context"
 	"goshortlinker/internal/handlers"
+	genlinks "goshortlinker/internal/repos/gen/links"
+	"goshortlinker/internal/services/links"
+	"time"
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/log"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"go.uber.org/fx"
 )
 
+func ModuleRepositories() fx.Option {
+	return fx.Provide(
+		fx.Annotate(genlinks.New, fx.As(new(genlinks.Querier))),
+	)
+}
+
+func ModuleServices() fx.Option {
+	return fx.Provide(
+		func(db *pgxpool.Pool, queries genlinks.Querier) *links.Service {
+			return links.NewService(db, queries, 5*time.Second)
+		},
+	)
+}
+
 func ModuleHandlers() fx.Option {
 	return fx.Provide(
-		handlers.NewHomeHandler,
+		handlers.NewLinksHandler,
 	)
 }
 
@@ -22,10 +40,10 @@ func ModuleApp() fx.Option {
 			func(
 				lc fx.Lifecycle,
 				application *fiber.App,
-				homeHandler *handlers.HomeHandler,
+				linksHandler *handlers.LinksHandler,
 			) {
-				RegisterRoutes(application, Hadnlers{
-					HomeHandler: homeHandler,
+				RegisterRoutes(application, Handlers{
+					LinksHandler: linksHandler,
 				})
 
 				lc.Append(fx.Hook{

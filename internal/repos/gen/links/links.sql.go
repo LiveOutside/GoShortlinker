@@ -122,8 +122,8 @@ func (q *Queries) RecordVisit(ctx context.Context, db DBTX, arg RecordVisitParam
 }
 
 const saveLink = `-- name: SaveLink :one
-INSERT INTO links (created_by, share_code, redirect_timer, redirect_to, valid_until, allowed_redirects, only_unique_redirects)
-VALUES ($1, $2, $3, $4, $5, $6, $7)
+INSERT INTO links (created_by, share_code, redirect_timer, redirect_to, valid_until, allowed_redirects, only_unique_redirects, is_active)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 RETURNING id, share_code, redirect_timer, redirect_to, valid_until, is_active, date_created
 `
 
@@ -135,6 +135,7 @@ type SaveLinkParams struct {
 	ValidUntil          pgtype.Timestamptz
 	AllowedRedirects    pgtype.Int4
 	OnlyUniqueRedirects bool
+	IsActive            bool
 }
 
 type SaveLinkRow struct {
@@ -156,6 +157,7 @@ func (q *Queries) SaveLink(ctx context.Context, db DBTX, arg SaveLinkParams) (Sa
 		arg.ValidUntil,
 		arg.AllowedRedirects,
 		arg.OnlyUniqueRedirects,
+		arg.IsActive,
 	)
 	var i SaveLinkRow
 	err := row.Scan(
