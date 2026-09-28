@@ -6,10 +6,13 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
-type Hadnlers struct {
-	HomeHandler *handlers.HomeHandler
+type Handlers struct {
+	LinksHandler *handlers.LinksHandler
+	// AuthenticationHandler *handlers.AuthenticationHandler
 }
 
-func RegisterRoutes(app *fiber.App, handlers Hadnlers) {
-	app.Get("/", handlers.HomeHandler.Get)
+func RegisterRoutes(app *fiber.App, handlers Handlers) {
+	app.Get("/", handlers.LinksHandler.Get)
+	app.Post("/", handlers.LinksHandler.Post)
+	// app.Get("/register", handlers.AuthenticationHandler)
 }

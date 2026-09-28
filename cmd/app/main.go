@@ -13,6 +13,9 @@ import (
 // BasePath /
 func main() {
 	fx.New(
+		app.ModuleDB(),
+		app.ModuleRepositories(),
+		app.ModuleServices(),
 		app.ModuleHandlers(),
 		app.ModuleApp(),
 	).Run()

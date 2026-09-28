@@ -1,0 +1,48 @@
+# Use postgres/example user/password credentials
+
+services:
+
+  db:
+    image: postgres:18
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWD}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_DB: ${POSTGRES_PROD}
+    ports:
+     - "${POSTGRES_PORT}:${POSTGRES_PORT}"
+    restart: always
+    shm_size: 128mb
+    volumes:
+      - local-data-postgres-goshortlinker:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_PROD}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  migrate:
+    image: ghcr.io/kukymbr/goose-docker:latest
+    command: ["-dir", "${GOOSE_MIGRATION_DIR}"]
+    environment:
+      GOOSE_DRIVER: ${GOOSE_DRIVER}
+      GOOSE_DBSTRING: ${GOOSE_DBSTRING}
+      GOOSE_COMMAND: "up"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./migrations/postgres:/migrations
+    
+  app:
+    build: .
+    ports:
+      - "8080:8080"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    env_file:
+      - pkg/.env
+
+volumes:
+  local-data-postgres-goshortlinker:
+

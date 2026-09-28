@@ -68,17 +68,6 @@
     color:#DC2626;font-size:13px;background:#FEF2F2;border:1px solid #FBD5D5;
     border-radius:6px;padding:10px 12px;margin-bottom:16px;
   }
-  .result{
-    background:#F0FDF4;border:1px solid #BBF7D0;border-radius:6px;padding:12px;margin-bottom:16px;
-  }
-  .result p{margin:0 0 8px;font-size:13px;font-weight:500;}
-  .result-row{display:flex;gap:8px;}
-  .result-row input{flex:1;padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-size:14px;font-family:inherit;background:#fff;}
-  .result-row button{padding:8px 14px;border:1px solid var(--border);border-radius:6px;background:#fff;cursor:pointer;font-size:13px;}
-  .result-row button:hover{background:#F3F4F6;}
-  .num-row input:disabled{background:#F3F4F6;}
-  button[type=submit]:disabled{opacity:.6;cursor:default;}
-  [hidden]{display:none !important;}
 </style>
 </head>
 <body>
@@ -89,17 +78,14 @@
   </p>
 
   <div class="panel">
-    <div class="errors" id="errors" role="alert" hidden></div>
-
-    <div class="result" id="result" hidden>
-      <p>Ссылка создана</p>
-      <div class="result-row">
-        <input type="text" id="result-link" readonly>
-        <button type="button" id="copy-btn">Копировать</button>
-      </div>
+    {{if .Errors}}
+    <div class="errors">
+      {{range .Errors}}{{.}}<br>{{end}}
     </div>
+    {{end}}
 
-    <form id="link-form" novalidate>
+    <form action="/links" method="POST">
+      {{if .CSRFToken}}<input type="hidden" name="csrf_token" value="{{.CSRFToken}}">{{end}}
 
       <div class="field">
         <label for="redirect_to">Куда переадресовать <span class="req">*</span></label>
@@ -156,94 +142,5 @@
     </form>
   </div>
 </div>
-
-<script>
-(function () {
-  var form = document.getElementById('link-form');
-  var errorsBox = document.getElementById('errors');
-  var resultBox = document.getElementById('result');
-  var resultLink = document.getElementById('result-link');
-  var copyBtn = document.getElementById('copy-btn');
-  var submitBtn = form.querySelector('button[type=submit]');
-  var f = form.elements;
-
-  function pad(n) { return String(n).padStart(2, '0'); }
-  function toLocalInput(d) {
-    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) +
-           'T' + pad(d.getHours()) + ':' + pad(d.getMinutes());
-  }
-  f.valid_until.min = toLocalInput(new Date());
-
-  // "без ограничений" блокирует поле лимита (только для авторизованных)
-  if (f.unlimited) {
-    f.unlimited.addEventListener('change', function () {
-      f.allowed_redirects.disabled = f.unlimited.checked;
-      if (f.unlimited.checked) f.allowed_redirects.value = '';
-    });
-  }
-
-  function showError(msg) {
-    errorsBox.textContent = msg;
-    errorsBox.hidden = false;
-    resultBox.hidden = true;
-  }
-
-  function buildPayload() {
-    var payload = {
-      redirect_to: f.redirect_to.value.trim(),
-      // datetime-local -> RFC3339 (UTC), pgtype.Timestamptz другого формата не примет
-      valid_until: new Date(f.valid_until.value).toISOString()
-    };
-    if (f.redirect_timer) {
-      payload.redirect_timer = parseInt(f.redirect_timer.value, 10);
-      payload.only_unique_redirects = f.only_unique_redirects.checked;
-      payload.is_active = f.is_active.checked;
-      var limit = parseInt(f.allowed_redirects.value, 10);
-      payload.allowed_redirects = (f.unlimited.checked || isNaN(limit)) ? null : limit;
-    }
-    return payload;
-  }
-
-  form.addEventListener('submit', function (e) {
-    e.preventDefault();
-    errorsBox.hidden = true;
-
-    if (!form.checkValidity()) { form.reportValidity(); return; }
-    if (new Date(f.valid_until.value) <= new Date()) {
-      showError('Дата окончания должна быть в будущем');
-      return;
-    }
-
-    submitBtn.disabled = true;
-    fetch('/', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(buildPayload())
-    })
-      .then(function (res) {
-        if (!res.ok) {
-          return res.text().then(function (t) { throw new Error(t || ('Ошибка ' + res.status)); });
-        }
-        return res.json();
-      })
-      .then(function (data) {
-        // сервер пока отдаёт "127.0.0.1/<код>" без схемы, берём только код
-        var code = String(data.shortened_link).split('/').pop();
-        resultLink.value = location.origin + '/' + code;
-        resultBox.hidden = false;
-        resultLink.select();
-      })
-      .catch(function (err) { showError(err.message); })
-      .then(function () { submitBtn.disabled = false; });
-  });
-
-  copyBtn.addEventListener('click', function () {
-    navigator.clipboard.writeText(resultLink.value).then(function () {
-      copyBtn.textContent = 'Скопировано';
-      setTimeout(function () { copyBtn.textContent = 'Копировать'; }, 1500);
-    });
-  });
-})();
-</script>
 </body>
 </html>

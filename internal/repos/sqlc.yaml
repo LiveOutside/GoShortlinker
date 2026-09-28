@@ -1,0 +1,13 @@
+version: "2"
+sql:
+  - engine: "postgresql"
+    queries: "queries/links.sql"
+    schema: "./../../migrations/postgres"
+    gen:
+      go:
+        out: "gen/links"
+        package: "links"
+        sql_package: "pgx/v5"
+        emit_interface: true
+        emit_methods_with_db_argument: true
+        omit_unused_structs: true
