@@ -5,6 +5,8 @@ import (
 	"goshortlinker/internal/handlers"
 	genlinks "goshortlinker/internal/repos/gen/links"
 	"goshortlinker/internal/services/links"
+	"goshortlinker/pkg/db/postgresql"
+	"os"
 	"time"
 
 	"github.com/gofiber/fiber/v3"
@@ -12,6 +14,14 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"go.uber.org/fx"
 )
+
+func ModuleDB() fx.Option {
+	return fx.Provide(
+		func() (*pgxpool.Pool, error) {
+			return postgresql.InitDB(context.Background(), os.Getenv("POSTGRES_DSN"))
+		},
+	)
+}
 
 func ModuleRepositories() fx.Option {
 	return fx.Provide(
