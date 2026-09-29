@@ -4,7 +4,9 @@ import (
 	"context"
 	"goshortlinker/internal/handlers"
 	genlinks "goshortlinker/internal/repos/gen/links"
+	genusers "goshortlinker/internal/repos/gen/users"
 	"goshortlinker/internal/services/links"
+	users "goshortlinker/internal/services/registration"
 	"goshortlinker/pkg/db/postgresql"
 	"os"
 	"time"
@@ -26,6 +28,7 @@ func ModuleDB() fx.Option {
 func ModuleRepositories() fx.Option {
 	return fx.Provide(
 		fx.Annotate(genlinks.New, fx.As(new(genlinks.Querier))),
+		fx.Annotate(genusers.New, fx.As(new(genusers.Querier))),
 	)
 }
 
@@ -34,12 +37,17 @@ func ModuleServices() fx.Option {
 		func(db *pgxpool.Pool, queries genlinks.Querier) *links.Service {
 			return links.NewService(db, queries, 5*time.Second)
 		},
+
+		func(db *pgxpool.Pool, queries genusers.Querier) *users.Service {
+			return users.NewService(db, queries, 5*time.Second)
+		},
 	)
 }
 
 func ModuleHandlers() fx.Option {
 	return fx.Provide(
 		handlers.NewLinksHandler,
+		handlers.NewRegistrationHandler,
 	)
 }
 
@@ -51,9 +59,11 @@ func ModuleApp() fx.Option {
 				lc fx.Lifecycle,
 				application *fiber.App,
 				linksHandler *handlers.LinksHandler,
+				registrationHandler *handlers.RegistrationHandler,
 			) {
 				RegisterRoutes(application, Handlers{
-					LinksHandler: linksHandler,
+					LinksHandler:        linksHandler,
+					RegistrationHandler: registrationHandler,
 				})
 
 				lc.Append(fx.Hook{

@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Регистрация — Сократитель ссылок</title>
+<style>
+  :root{
+    --bg:#F7F7F8;
+    --surface:#FFFFFF;
+    --border:#E1E3E7;
+    --text:#1D2027;
+    --text-muted:#6B7280;
+    --accent:#2563EB;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    font-size:14px;
+    line-height:1.5;
+  }
+  .wrap{max-width:400px;margin:60px auto;padding:0 20px;}
+  h1{font-size:20px;margin:0 0 6px;}
+  .sub{color:var(--text-muted);margin:0 0 24px;}
+
+  .panel{
+    background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:24px;
+  }
+
+  .field{margin-bottom:16px;}
+  .field label{display:block;font-size:13px;font-weight:500;margin-bottom:5px;}
+  .field label .req{color:#DC2626;}
+  .hint{font-size:12px;color:#9AA0AC;margin-top:4px;}
+
+  input[type=text], input[type=email], input[type=password]{
+    width:100%;padding:9px 10px;border:1px solid var(--border);border-radius:6px;
+    font-size:14px;font-family:inherit;color:var(--text);background:#fff;
+  }
+  input:focus-visible, button:focus-visible{
+    outline:2px solid var(--accent);outline-offset:1px;
+  }
+
+  button[type=submit]{
+    width:100%;margin-top:6px;padding:10px;border:none;border-radius:6px;
+    background:var(--accent);color:#fff;font-size:14px;font-weight:600;cursor:pointer;
+  }
+  button[type=submit]:hover{background:#1D4ED8;}
+  button[type=submit]:disabled{opacity:.6;cursor:default;}
+
+  .errors{
+    color:#DC2626;font-size:13px;background:#FEF2F2;border:1px solid #FBD5D5;
+    border-radius:6px;padding:10px 12px;margin-bottom:16px;
+  }
+  [hidden]{display:none !important;}
+
+  .foot{text-align:center;font-size:13px;color:var(--text-muted);margin-top:16px;}
+  .foot a{color:var(--accent);text-decoration:none;}
+  .foot a:hover{text-decoration:underline;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Регистрация</h1>
+  <p class="sub">Создайте аккаунт, чтобы настраивать таймер, лимит переходов и другие параметры ссылок</p>
+
+  <div class="panel">
+    <div class="errors" id="errors" role="alert" hidden></div>
+
+    <form id="register-form" novalidate>
+      <div class="field">
+        <label for="username">Имя пользователя <span class="req">*</span></label>
+        <input type="text" id="username" name="username" autocomplete="username" minlength="3" maxlength="32" pattern="[A-Za-z0-9]+" required>
+        <div class="hint">3–32 символа, латиница и цифры</div>
+      </div>
+
+      <div class="field">
+        <label for="email">Email <span class="req">*</span></label>
+        <input type="email" id="email" name="email" autocomplete="email" required>
+      </div>
+
+      <div class="field">
+        <label for="password">Пароль <span class="req">*</span></label>
+        <input type="password" id="password" name="password" autocomplete="new-password" minlength="7" required>
+        <div class="hint">Минимум 7 символов</div>
+      </div>
+
+      <div class="field">
+        <label for="password_again">Повторите пароль <span class="req">*</span></label>
+        <input type="password" id="password_again" name="password_again" autocomplete="new-password" minlength="7" required>
+      </div>
+
+      <button type="submit">Зарегистрироваться</button>
+    </form>
+
+    <p class="foot">Уже есть аккаунт? <a href="/login">Войти</a></p>
+  </div>
+</div>
+
+<script>
+(function () {
+  var form = document.getElementById('register-form');
+  var errorsBox = document.getElementById('errors');
+  var submitBtn = form.querySelector('button[type=submit]');
+  var f = form.elements;
+
+  function showError(msg) {
+    errorsBox.textContent = msg;
+    errorsBox.hidden = false;
+  }
+
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    errorsBox.hidden = true;
+
+    if (!form.checkValidity()) { form.reportValidity(); return; }
+
+    if (f.password.value !== f.password_again.value) {
+      showError('Пароли не совпадают');
+      return;
+    }
+
+    var payload = {
+      username: f.username.value.trim(),
+      email: f.email.value.trim(),
+      password: f.password.value
+    };
+
+    submitBtn.disabled = true;
+    fetch('/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    })
+      .then(function (res) {
+        if (!res.ok) {
+          return res.text().then(function (t) { throw new Error(t || ('Ошибка ' + res.status)); });
+        }
+        return res.json();
+      })
+      .then(function (data) {
+        // ожидается { redirect_to: "/activate?user_id=..." } от сервера
+        location.href = data.redirect_to || '/activate';
+      })
+      .catch(function (err) { showError(err.message); submitBtn.disabled = false; });
+  });
+})();
+</script>
+</body>
+</html>

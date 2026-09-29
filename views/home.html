@@ -227,9 +227,7 @@
         return res.json();
       })
       .then(function (data) {
-        // сервер пока отдаёт "127.0.0.1/<код>" без схемы, берём только код
-        var code = String(data.shortened_link).split('/').pop();
-        resultLink.value = location.origin + '/' + code;
+        resultLink.value = location.origin + '/r/' + data.share_code;
         resultBox.hidden = false;
         resultLink.select();
       })

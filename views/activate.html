@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Подтверждение почты — Сократитель ссылок</title>
+<style>
+  :root{
+    --bg:#F7F7F8;
+    --surface:#FFFFFF;
+    --border:#E1E3E7;
+    --text:#1D2027;
+    --text-muted:#6B7280;
+    --accent:#2563EB;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    font-size:14px;
+    line-height:1.5;
+  }
+  .wrap{max-width:400px;margin:60px auto;padding:0 20px;}
+  h1{font-size:20px;margin:0 0 6px;}
+  .sub{color:var(--text-muted);margin:0 0 24px;}
+
+  .panel{
+    background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:24px;
+  }
+
+  .field{margin-bottom:16px;}
+  .field label{display:block;font-size:13px;font-weight:500;margin-bottom:5px;}
+
+  input[name=code]{
+    width:100%;padding:9px 10px;border:1px solid var(--border);border-radius:6px;
+    font-size:22px;font-family:inherit;color:var(--text);background:#fff;
+    letter-spacing:8px;text-align:center;
+  }
+  input:focus-visible, button:focus-visible{
+    outline:2px solid var(--accent);outline-offset:1px;
+  }
+
+  button[type=submit]{
+    width:100%;margin-top:6px;padding:10px;border:none;border-radius:6px;
+    background:var(--accent);color:#fff;font-size:14px;font-weight:600;cursor:pointer;
+  }
+  button[type=submit]:hover{background:#1D4ED8;}
+  button[type=submit]:disabled{opacity:.6;cursor:default;}
+
+  .resend{
+    width:100%;margin-top:10px;padding:9px;border:1px solid var(--border);border-radius:6px;
+    background:#fff;color:var(--text);font-size:13px;cursor:pointer;
+  }
+  .resend:hover{background:#F3F4F6;}
+  .resend:disabled{opacity:.6;cursor:default;}
+
+  .errors{
+    color:#DC2626;font-size:13px;background:#FEF2F2;border:1px solid #FBD5D5;
+    border-radius:6px;padding:10px 12px;margin-bottom:16px;
+  }
+  .notice{
+    color:#1D4ED8;font-size:13px;background:#EFF6FF;border:1px solid #BFDBFE;
+    border-radius:6px;padding:10px 12px;margin-bottom:16px;
+  }
+  [hidden]{display:none !important;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Подтвердите почту</h1>
+  <p class="sub">Мы отправили 6-значный код на вашу почту. Он действителен 15 минут.</p>
+
+  <div class="panel">
+    <div class="errors" id="errors" role="alert" hidden></div>
+    <div class="notice" id="notice" role="status" hidden></div>
+
+    <form id="activate-form" novalidate>
+      <div class="field">
+        <label for="code">Код подтверждения</label>
+        <input type="text" id="code" name="code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" required autofocus>
+      </div>
+
+      <button type="submit">Подтвердить</button>
+      <button type="button" class="resend" id="resend-btn">Отправить код повторно</button>
+    </form>
+  </div>
+</div>
+
+<script>
+(function () {
+  var params = new URLSearchParams(location.search);
+  var userID = params.get('user_id');
+
+  var form = document.getElementById('activate-form');
+  var errorsBox = document.getElementById('errors');
+  var noticeBox = document.getElementById('notice');
+  var submitBtn = form.querySelector('button[type=submit]');
+  var resendBtn = document.getElementById('resend-btn');
+  var codeInput = document.getElementById('code');
+
+  if (!userID) {
+    errorsBox.textContent = 'Не найден пользователь для активации. Пройдите регистрацию заново.';
+    errorsBox.hidden = false;
+    submitBtn.disabled = true;
+    resendBtn.disabled = true;
+  }
+
+  function showError(msg) {
+    errorsBox.textContent = msg;
+    errorsBox.hidden = false;
+    noticeBox.hidden = true;
+  }
+
+  function showNotice(msg) {
+    noticeBox.textContent = msg;
+    noticeBox.hidden = false;
+    errorsBox.hidden = true;
+  }
+
+  codeInput.addEventListener('input', function () {
+    codeInput.value = codeInput.value.replace(/\D/g, '').slice(0, 6);
+  });
+
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    if (!form.checkValidity()) { form.reportValidity(); return; }
+
+    submitBtn.disabled = true;
+    fetch('/activate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: Number(userID), code: codeInput.value })
+    })
+      .then(function (res) {
+        return res.text().then(function (t) {
+          var data;
+          try { data = t ? JSON.parse(t) : {}; } catch (e) { data = {}; }
+          if (!res.ok) {
+            // истёкший код: сервер уже выслал новый — сообщаем об этом, а не как об ошибке
+            if (res.status === 400 && /истёк|expired/i.test(t)) {
+              throw { notice: 'Код истёк. Мы отправили новый код на почту.' };
+            }
+            throw { error: data.error || t || ('Ошибка ' + res.status) };
+          }
+          return data;
+        });
+      })
+      .then(function (data) {
+        location.href = data.redirect_to || '/login';
+      })
+      .catch(function (err) {
+        if (err && err.notice) { showNotice(err.notice); }
+        else { showError((err && err.error) || 'Неверный код'); }
+        submitBtn.disabled = false;
+      });
+  });
+
+  resendBtn.addEventListener('click', function () {
+    resendBtn.disabled = true;
+    fetch('/activate/resend', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: Number(userID) })
+    })
+      .then(function (res) {
+        if (!res.ok) { return res.text().then(function (t) { throw new Error(t); }); }
+        showNotice('Новый код отправлен на почту.');
+      })
+      .catch(function () { showError('Не удалось отправить код повторно'); })
+      .then(function () {
+        setTimeout(function () { resendBtn.disabled = false; }, 30000);
+      });
+  });
+})();
+</script>
+</body>
+</html>

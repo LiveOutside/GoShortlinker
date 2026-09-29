@@ -40,8 +40,8 @@ ON CONFLICT (link_id, ip_hash) DO NOTHING;
 
 -- name: SetLinkActive :exec 
 UPDATE LINKS
-SET is_active = $2
-WHERE id = $1 AND created_by = $3;
+SET is_active = $3
+WHERE id = $1 AND created_by = $2;
 
 -- name: DeleteLink :exec
 DELETE FROM links 

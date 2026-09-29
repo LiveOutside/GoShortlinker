@@ -52,7 +52,7 @@ func (s *Service) SaveAndShortenLink(request dtolinks.SaveRequest) (dtolinks.Lin
 
 	// REWORK: change domain through .env when Docker added
 	return dtolinks.LinkResponse{
-		ShortenedLink: "127.0.0.1/" + link.ShareCode,
+		ShareCode: link.ShareCode,
 	}, nil
 
 	// return dtolinks.SaveResponse{

@@ -187,17 +187,17 @@ func (q *Queries) SaveLink(ctx context.Context, db DBTX, arg SaveLinkParams) (Sa
 
 const setLinkActive = `-- name: SetLinkActive :exec
 UPDATE LINKS
-SET is_active = $2
-WHERE id = $1 AND created_by = $3
+SET is_active = $3
+WHERE id = $1 AND created_by = $2
 `
 
 type SetLinkActiveParams struct {
 	ID        int32
-	IsActive  bool
 	CreatedBy pgtype.Int4
+	IsActive  bool
 }
 
 func (q *Queries) SetLinkActive(ctx context.Context, db DBTX, arg SetLinkActiveParams) error {
-	_, err := db.Exec(ctx, setLinkActive, arg.ID, arg.IsActive, arg.CreatedBy)
+	_, err := db.Exec(ctx, setLinkActive, arg.ID, arg.CreatedBy, arg.IsActive)
 	return err
 }

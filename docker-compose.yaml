@@ -42,6 +42,7 @@ services:
         condition: service_completed_successfully
     env_file:
       - pkg/.env
+    restart: on-failure
 
 volumes:
   local-data-postgres-goshortlinker:
