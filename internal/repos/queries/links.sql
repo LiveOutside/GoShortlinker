@@ -8,6 +8,11 @@ INSERT INTO links (created_by, share_code, redirect_timer, redirect_to, valid_un
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 RETURNING id, share_code, redirect_timer, redirect_to, valid_until, is_active, date_created;
 
+-- name: GetOnlyLinkByShareCode :one
+SELECT redirect_to
+FROM links
+WHERE share_code = $1;
+
 -- name: IncrementRedirectCount :one
 UPDATE links 
 SET redirects = redirects + 1

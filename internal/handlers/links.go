@@ -30,6 +30,17 @@ func (h *LinksHandler) Get(c fiber.Ctx) error {
 	return c.Render("home", fiber.Map{})
 }
 
+func (h *LinksHandler) GetRedirect(c fiber.Ctx) error {
+	share_code := c.Params("share_code")
+
+	link, err := h.service.GetLink(share_code)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).SendString("failed to retrieve link")
+	}
+
+	return c.Redirect().To(link.RedirectTo)
+}
+
 func (h *LinksHandler) Post(c fiber.Ctx) error {
 	var payload linksdto.SaveRequest
 

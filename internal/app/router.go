@@ -13,6 +13,8 @@ type Handlers struct {
 
 func RegisterRoutes(app *fiber.App, handlers Handlers) {
 	app.Get("/", handlers.LinksHandler.Get)
+	app.Get("/:share_code", handlers.LinksHandler.GetRedirect)
 	app.Post("/", handlers.LinksHandler.Post)
-	// app.Get("/register", handlers.AuthenticationHandler)
+
+	// app.Get("/register", handlers.RegistrationHandler)
 }

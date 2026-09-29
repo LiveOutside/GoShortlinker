@@ -73,6 +73,19 @@ func (q *Queries) GetLinkByShareCode(ctx context.Context, db DBTX, shareCode str
 	return i, err
 }
 
+const getOnlyLinkByShareCode = `-- name: GetOnlyLinkByShareCode :one
+SELECT redirect_to
+FROM links
+WHERE share_code = $1
+`
+
+func (q *Queries) GetOnlyLinkByShareCode(ctx context.Context, db DBTX, shareCode string) (string, error) {
+	row := db.QueryRow(ctx, getOnlyLinkByShareCode, shareCode)
+	var redirect_to string
+	err := row.Scan(&redirect_to)
+	return redirect_to, err
+}
+
 const hasVisited = `-- name: HasVisited :one
 SELECT EXISTS(
     SELECT 1 FROM link_visits WHERE link_id = $1 AND ip_hash = $2

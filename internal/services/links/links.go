@@ -7,6 +7,21 @@ import (
 	"log"
 )
 
+func (s *Service) GetLink(share_code string) (dtolinks.RedirectResponse, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), s.maxTimeout)
+	defer cancel()
+
+	link, err := s.queries.GetOnlyLinkByShareCode(ctx, s.database, share_code)
+	if err != nil {
+		log.Printf("Failed to retrieve link from share code: %v", err)
+		return dtolinks.RedirectResponse{}, err
+	}
+
+	return dtolinks.RedirectResponse{
+		RedirectTo: link,
+	}, nil
+}
+
 func (s *Service) SaveAndShortenLink(request dtolinks.SaveRequest) (dtolinks.LinkResponse, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), s.maxTimeout)
 	defer cancel()
