@@ -2,7 +2,9 @@ package users
 
 import "errors"
 
-var ErrPasswordMismatch = errors.New("passwords do not match")
-var ErrEmailAlreadyExists = errors.New("email already exists")
-var ErrUsernameAlreadyExists = errors.New("username already exists")
-var ErrInternal = errors.New("internal error")
+var (
+	ErrPasswordMismatch      = errors.New("passwords do not match")
+	ErrEmailAlreadyExists    = errors.New("email already exists")
+	ErrUsernameAlreadyExists = errors.New("username already exists")
+	ErrInternal              = errors.New("internal error")
+)

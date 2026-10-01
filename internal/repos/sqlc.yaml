@@ -23,3 +23,15 @@ sql:
         emit_interface: true
         emit_methods_with_db_argument: true
         omit_unused_structs: true
+
+  - engine: "postgresql"
+    queries: "queries/activation_codes.sql"
+    schema: "./../../migrations/postgres"
+    gen:
+      go:
+        out: "gen/activation_codes"
+        package: "activationcodes"
+        sql_package: "pgx/v5"
+        emit_interface: true
+        emit_methods_with_db_argument: true
+        omit_unused_structs: true

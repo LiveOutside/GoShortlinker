@@ -14,6 +14,7 @@ import (
 func main() {
 	fx.New(
 		app.ModuleDB(),
+		app.ModuleMailer(),
 		app.ModuleRepositories(),
 		app.ModuleServices(),
 		app.ModuleHandlers(),

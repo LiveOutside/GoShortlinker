@@ -31,10 +31,6 @@ func (s *Service) PostUser(request dtousers.RegistrationRequest) (dtousers.Regis
 		return dtousers.RegistrationResponse{}, ErrUsernameAlreadyExists
 	}
 
-	// if request.Password != request.RePassword {
-	// 	return dtousers.RegistrationResponse{}, ErrPasswordMismatch
-	// }
-
 	hash, err := HashPassword(request.Password)
 	if err != nil {
 		log.Printf("failed to hash password")
@@ -46,6 +42,16 @@ func (s *Service) PostUser(request dtousers.RegistrationRequest) (dtousers.Regis
 		Email:        request.Email,
 		PasswordHash: hash,
 	})
+
+	if err != nil {
+		log.Printf("failed to create user: %v", err)
+		return dtousers.RegistrationResponse{}, ErrInternal
+	}
+
+	if err := s.activation.IssueAndSend(ctx, user.ID, user.Email); err != nil {
+		log.Printf("failed to issue activation code: %v", err)
+		return dtousers.RegistrationResponse{}, ErrInternal
+	}
 
 	return dtousers.RegistrationResponse{
 		ID:       user.ID,

@@ -2,6 +2,7 @@ package users
 
 import (
 	genusers "goshortlinker/internal/repos/gen/users"
+	activationservice "goshortlinker/internal/services/mailer"
 	"time"
 
 	"golang.org/x/crypto/bcrypt"
@@ -12,13 +13,15 @@ const bcryptCost = 12
 type Service struct {
 	database   genusers.DBTX
 	queries    genusers.Querier
+	activation *activationservice.Service
 	maxTimeout time.Duration
 }
 
-func NewService(db genusers.DBTX, queries genusers.Querier, timeout time.Duration) *Service {
+func NewService(db genusers.DBTX, queries genusers.Querier, activation *activationservice.Service, timeout time.Duration) *Service {
 	return &Service{
 		database:   db,
 		queries:    queries,
+		activation: activation,
 		maxTimeout: timeout,
 	}
 }
