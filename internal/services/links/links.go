@@ -5,6 +5,8 @@ import (
 	dtolinks "goshortlinker/internal/data/dto/links"
 	genlinks "goshortlinker/internal/repos/gen/links"
 	"log"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 func (s *Service) GetLink(share_code string) (dtolinks.RedirectResponse, error) {
@@ -22,12 +24,14 @@ func (s *Service) GetLink(share_code string) (dtolinks.RedirectResponse, error) 
 	}, nil
 }
 
-func (s *Service) SaveAndShortenLink(request dtolinks.SaveRequest) (dtolinks.LinkResponse, error) {
+var allowedTimers = map[int32]struct{}{0: {}, 3: {}, 5: {}, 10: {}, 15: {}}
+
+func (s *Service) SaveAndShortenLink(userID pgtype.Int4, request dtolinks.SaveRequest) (dtolinks.LinkResponse, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), s.maxTimeout)
 	defer cancel()
 
 	params := genlinks.SaveLinkParams{
-		// CreatedBy: userID,
+		CreatedBy:           userID,
 		ShareCode:           GenerateSharecode(),
 		RedirectTimer:       5,
 		RedirectTo:          request.RedirectTo,
@@ -36,15 +40,21 @@ func (s *Service) SaveAndShortenLink(request dtolinks.SaveRequest) (dtolinks.Lin
 		IsActive:            true,
 	}
 
-	// if userID.Valid { // realisation of some kind of validation that user is auth
-	// 	params.RedirectTimer = request.RedirectTimer
-	// 	params.AllowedRedirects = request.AllowedRedirects
-	// 	params.OnlyUniqueRedirects = request.OnlyUniqueRedirects
-	// 	params.IsActive = request.IsActive
-	// }
+	if userID.Valid {
+		if _, ok := allowedTimers[request.RedirectTimer]; !ok {
+			return dtolinks.LinkResponse{}, ErrInvalidParams
+		}
+		if request.AllowedRedirects.Valid && request.AllowedRedirects.Int32 < 1 {
+			return dtolinks.LinkResponse{}, ErrInvalidParams
+		}
+
+		params.RedirectTimer = request.RedirectTimer
+		params.AllowedRedirects = request.AllowedRedirects
+		params.OnlyUniqueRedirects = request.OnlyUniqueRedirects
+		params.IsActive = request.IsActive
+	}
 
 	link, err := s.queries.SaveLink(ctx, s.database, params)
-
 	if err != nil {
 		log.Printf("Failed to shorten link: %v", err)
 		return dtolinks.LinkResponse{}, ErrSaveAndShortenLink
@@ -54,14 +64,4 @@ func (s *Service) SaveAndShortenLink(request dtolinks.SaveRequest) (dtolinks.Lin
 	return dtolinks.LinkResponse{
 		ShareCode: link.ShareCode,
 	}, nil
-
-	// return dtolinks.SaveResponse{
-	// 	ID:            link.ID,
-	// 	ShareCode:     link.ShareCode,
-	// 	RedirectTimer: link.RedirectTimer,
-	// 	RedirectTo:    link.RedirectTo,
-	// 	ValidUntil:    link.ValidUntil,
-	// 	IsActive:      link.IsActive,
-	// 	DateCreated:   link.DateCreated,
-	// }, nil
 }

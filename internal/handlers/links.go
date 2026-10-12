@@ -3,10 +3,12 @@ package handlers
 import (
 	"errors"
 	linksdto "goshortlinker/internal/data/dto/links"
+	"goshortlinker/internal/middleware"
 	linkservice "goshortlinker/internal/services/links"
 	"net/http"
 
 	"github.com/gofiber/fiber/v3"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type LinksHandler struct {
@@ -27,7 +29,12 @@ func NewLinksHandler(s *linkservice.Service) *LinksHandler {
 // @Failure 500 {string} string "Internal Server Error"
 // @Router / [get]
 func (h *LinksHandler) Get(c fiber.Ctx) error {
-	return c.Render("home", fiber.Map{})
+	data := fiber.Map{"IsAuthenticated": false}
+	if user, ok := middleware.Current(c); ok {
+		data["IsAuthenticated"] = true
+		data["User"] = fiber.Map{"ID": user.UserID, "Name": user.Username}
+	}
+	return c.Render("home", data)
 }
 
 func (h *LinksHandler) GetRedirect(c fiber.Ctx) error {
@@ -48,8 +55,16 @@ func (h *LinksHandler) Post(c fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).SendString("invalid parse body")
 	}
 
-	link, err := h.service.SaveAndShortenLink(payload)
+	userID := pgtype.Int4{}
+	if id, ok := middleware.UserID(c); ok {
+		userID = pgtype.Int4{Int32: id, Valid: true}
+	}
+
+	link, err := h.service.SaveAndShortenLink(userID, payload)
 	if err != nil {
+		if errors.Is(err, linkservice.ErrInvalidParams) {
+			return c.Status(fiber.StatusBadRequest).SendString("некорректные параметры ссылки")
+		}
 		if errors.Is(err, linkservice.ErrSaveAndShortenLink) {
 			return c.Status(fiber.StatusInternalServerError).SendString("could not shorten link")
 		}

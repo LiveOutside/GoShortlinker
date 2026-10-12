@@ -2,10 +2,13 @@ package app
 
 import (
 	"context"
+	"fmt"
 	"goshortlinker/internal/handlers"
+	"goshortlinker/internal/middleware"
 	gencodes "goshortlinker/internal/repos/gen/activation_codes"
 	genlinks "goshortlinker/internal/repos/gen/links"
 	genusers "goshortlinker/internal/repos/gen/users"
+	authservice "goshortlinker/internal/services/auth"
 	"goshortlinker/internal/services/links"
 	activationcodes "goshortlinker/internal/services/mailer"
 	users "goshortlinker/internal/services/registration"
@@ -63,6 +66,22 @@ func ModuleServices() fx.Option {
 		func(db *pgxpool.Pool, queries genusers.Querier, activation *activationcodes.Service) *users.Service {
 			return users.NewService(db, queries, activation, 5*time.Second)
 		},
+
+		func() (*authservice.TokenManager, error) {
+			ttl := 24 * time.Hour
+			if v := os.Getenv("JWT_TTL"); v != "" {
+				d, err := time.ParseDuration(v)
+				if err != nil {
+					return nil, fmt.Errorf("invalid JWT_TTL %q: %w", v, err)
+				}
+				ttl = d
+			}
+			return authservice.NewTokenManager(os.Getenv("JWT_SECRET"), ttl)
+		},
+
+		func(db *pgxpool.Pool, queries genusers.Querier, tokens *authservice.TokenManager) *authservice.Service {
+			return authservice.NewService(db, queries, tokens, 5*time.Second)
+		},
 	)
 }
 
@@ -86,7 +105,10 @@ func ModuleApp() fx.Option {
 				registrationHandler *handlers.RegistrationHandler,
 				mailHandler *handlers.MailerHandler,
 				authHandler *handlers.AuthenticationHandler,
+				tokens *authservice.TokenManager,
 			) {
+				application.Use(middleware.Authenticate(tokens))
+
 				RegisterRoutes(application, Handlers{
 					LinksHandler:          linksHandler,
 					RegistrationHandler:   registrationHandler,
@@ -98,7 +120,7 @@ func ModuleApp() fx.Option {
 					OnStart: func(ctx context.Context) error {
 						go func() {
 							if err := application.Listen(":8080"); err != nil {
-								log.Errorf("Falied to start listening (fiber): %w", err)
+								log.Errorf("Failed to start listening (fiber): %v", err)
 							}
 						}()
 						return nil

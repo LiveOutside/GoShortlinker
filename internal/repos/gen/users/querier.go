@@ -12,6 +12,7 @@ type Querier interface {
 	ActivateUser(ctx context.Context, db DBTX, id int32) error
 	CreateUser(ctx context.Context, db DBTX, arg CreateUserParams) (CreateUserRow, error)
 	EmailExists(ctx context.Context, db DBTX, email string) (bool, error)
+	GetPasswdHash(ctx context.Context, db DBTX, email string) (string, error)
 	GetUserByEmail(ctx context.Context, db DBTX, email string) (GetUserByEmailRow, error)
 	UsernameExists(ctx context.Context, db DBTX, username string) (bool, error)
 }

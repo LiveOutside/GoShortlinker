@@ -62,15 +62,20 @@ func (s *Service) Verify(ctx context.Context, request dtocodes.ActivateRequest) 
 		return ErrInvalidCode
 	}
 
+	if err := s.queries.ActivateUserAndDeleteCode(ctx, s.database, request.UserID); err != nil {
+		log.Printf("failed to activate user %d: %v", request.UserID, err)
+		return ErrInternal
+	}
+
 	return nil
 }
 
-func (s *Service) Delete(ctx context.Context, userID int32) error {
-	ctx, cancel := context.WithTimeout(context.Background(), s.maxTimeout)
-	defer cancel()
+// func (s *Service) Delete(ctx context.Context, userID int32) error {
+// 	ctx, cancel := context.WithTimeout(context.Background(), s.maxTimeout)
+// 	defer cancel()
 
-	return s.queries.DeleteActivationCode(ctx, s.database, userID)
-}
+// 	return s.queries.DeleteActivationCode(ctx, s.database, userID)
+// }
 
 func (s *Service) Resend(ctx context.Context, userID int32) error {
 	email, err := s.queries.GetPendingEmail(ctx, s.database, userID)

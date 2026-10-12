@@ -11,6 +11,20 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const activateUserAndDeleteCode = `-- name: ActivateUserAndDeleteCode :exec
+WITH deleted AS (
+    DELETE FROM activation_codes WHERE user_id = $1
+)
+UPDATE users
+SET is_active = TRUE, updated_at = NOW()
+WHERE users.id = $1
+`
+
+func (q *Queries) ActivateUserAndDeleteCode(ctx context.Context, db DBTX, id int32) error {
+	_, err := db.Exec(ctx, activateUserAndDeleteCode, id)
+	return err
+}
+
 const deleteActivationCode = `-- name: DeleteActivationCode :exec
 DELETE FROM activation_codes 
 WHERE user_id = $1

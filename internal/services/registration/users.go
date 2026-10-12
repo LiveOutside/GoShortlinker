@@ -4,12 +4,17 @@ import (
 	"context"
 	dtousers "goshortlinker/internal/data/dto/users"
 	genusers "goshortlinker/internal/repos/gen/users"
+	"goshortlinker/pkg/password"
 	"log"
+	"strings"
 )
 
 func (s *Service) PostUser(request dtousers.RegistrationRequest) (dtousers.RegistrationResponse, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), s.maxTimeout)
 	defer cancel()
+
+	request.Email = strings.ToLower(strings.TrimSpace(request.Email))
+	request.Username = strings.TrimSpace(request.Username)
 
 	emailTaken, err := s.queries.EmailExists(ctx, s.database, request.Email)
 	if err != nil {
@@ -31,7 +36,7 @@ func (s *Service) PostUser(request dtousers.RegistrationRequest) (dtousers.Regis
 		return dtousers.RegistrationResponse{}, ErrUsernameAlreadyExists
 	}
 
-	hash, err := HashPassword(request.Password)
+	hash, err := password.Hash(request.Password)
 	if err != nil {
 		log.Printf("failed to hash password")
 		return dtousers.RegistrationResponse{}, err

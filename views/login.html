@@ -110,20 +110,22 @@
     };
 
     submitBtn.disabled = true;
-    fetch('/login', {
+    fetch('/auth', {
       method: 'POST',
+      credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     })
       .then(function (res) {
-        if (!res.ok) {
-          return res.text().then(function (t) { throw new Error(t || ('Ошибка ' + res.status)); });
-        }
-        return res.json();
+        return res.json().catch(function () { return {}; }).then(function (data) {
+          return { ok: res.ok, data: data };
+        });
       })
-      .then(function (data) {
-        // неактивный аккаунт: сервер отвечает 403 и redirect_to на /activate — тоже обрабатываем тут
-        location.href = data.redirect_to || '/';
+      .then(function (r) {
+        // 200 -> "/", 403 (аккаунт не активирован) -> "/activate?user_id=..."
+        if (r.data.redirect_to) { location.href = r.data.redirect_to; return; }
+        if (!r.ok) { throw new Error(r.data.error || 'Ошибка входа'); }
+        location.href = '/';
       })
       .catch(function (err) { showError(err.message); submitBtn.disabled = false; });
   });

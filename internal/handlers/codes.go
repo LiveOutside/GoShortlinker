@@ -53,12 +53,6 @@ func (h *MailerHandler) Post(c fiber.Ctx) error {
 		}
 	}
 
-	if err := h.service.Delete(c.Context(), payload.UserID); err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(dtocodes.ActivateResponse{
-			Error: "internal error",
-		})
-	}
-
 	return c.JSON(dtocodes.ActivateResponse{RedirectTo: "/auth"})
 }
 

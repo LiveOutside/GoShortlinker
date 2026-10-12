@@ -66,6 +66,19 @@ func (q *Queries) EmailExists(ctx context.Context, db DBTX, email string) (bool,
 	return exists, err
 }
 
+const getPasswdHash = `-- name: GetPasswdHash :one
+SELECT password_hash
+FROM users
+WHERE email = $1
+`
+
+func (q *Queries) GetPasswdHash(ctx context.Context, db DBTX, email string) (string, error) {
+	row := db.QueryRow(ctx, getPasswdHash, email)
+	var password_hash string
+	err := row.Scan(&password_hash)
+	return password_hash, err
+}
+
 const getUserByEmail = `-- name: GetUserByEmail :one
 SELECT id, username, email, password_hash, is_active
 FROM users

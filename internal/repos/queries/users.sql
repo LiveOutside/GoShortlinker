@@ -18,3 +18,8 @@ WHERE email = $1;
 UPDATE users
 SET is_active = TRUE, updated_at = NOW()
 WHERE id = $1;
+
+-- name: GetPasswdHash :one
+SELECT password_hash
+FROM users
+WHERE email = $1;

@@ -9,6 +9,7 @@ import (
 )
 
 type Querier interface {
+	ActivateUserAndDeleteCode(ctx context.Context, db DBTX, id int32) error
 	DeleteActivationCode(ctx context.Context, db DBTX, userID int32) error
 	GetActivationCodeByUserID(ctx context.Context, db DBTX, userID int32) (GetActivationCodeByUserIDRow, error)
 	GetPendingEmail(ctx context.Context, db DBTX, id int32) (string, error)
