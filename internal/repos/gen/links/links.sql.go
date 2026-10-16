@@ -17,7 +17,7 @@ SET redirects = redirects + 1
 WHERE id = $1
     AND is_active = TRUE
     AND (valid_until IS NULL OR valid_until > NOW())
-    AND (allowed_redirects IS NULL OR redirect < allowed_redirects)
+    AND (allowed_redirects IS NULL OR redirects < allowed_redirects)
 RETURNING redirect_to, redirects
 `
 
@@ -118,7 +118,7 @@ func (q *Queries) IncrementRedirectCount(ctx context.Context, db DBTX, id int32)
 	return redirects, err
 }
 
-const recordVisit = `-- name: RecordVisit :exec
+const recordVisit = `-- name: RecordVisit :execrows
 INSERT INTO link_visits (link_id, ip_hash)
 VALUES ($1, $2)
 ON CONFLICT (link_id, ip_hash) DO NOTHING
@@ -129,9 +129,12 @@ type RecordVisitParams struct {
 	IpHash string
 }
 
-func (q *Queries) RecordVisit(ctx context.Context, db DBTX, arg RecordVisitParams) error {
-	_, err := db.Exec(ctx, recordVisit, arg.LinkID, arg.IpHash)
-	return err
+func (q *Queries) RecordVisit(ctx context.Context, db DBTX, arg RecordVisitParams) (int64, error) {
+	result, err := db.Exec(ctx, recordVisit, arg.LinkID, arg.IpHash)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const saveLink = `-- name: SaveLink :one

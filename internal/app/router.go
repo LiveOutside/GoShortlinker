@@ -33,6 +33,7 @@ func RegisterRoutes(app *fiber.App, handlers Handlers) {
 	app.Post("/", handlers.LinksHandler.Post)
 
 	app.Get("/r/:share_code", handlers.LinksHandler.GetRedirect)
+	app.Post("/r/:share_code/confirm", handlers.LinksHandler.ConfirmRedirect)
 
 	app.Get("/register", guestOnly, handlers.RegistrationHandler.Get)
 	app.Post("/register", handlers.RegistrationHandler.Post)
@@ -44,4 +45,11 @@ func RegisterRoutes(app *fiber.App, handlers Handlers) {
 	app.Get("/auth", guestOnly, handlers.AuthenticationHandler.Get)
 	app.Post("/auth", loginLimiter, handlers.AuthenticationHandler.Post)
 	app.Post("/logout", handlers.AuthenticationHandler.Logout)
+
+	app.Use(func(c fiber.Ctx) error {
+		return c.Status(fiber.StatusNotFound).Render("404", fiber.Map{
+			"Title":   "Page not found",
+			"Message": "The page you are trying to access does not exist.",
+		})
+	})
 }

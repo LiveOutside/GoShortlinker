@@ -56,7 +56,7 @@ func ModuleRepositories() fx.Option {
 func ModuleServices() fx.Option {
 	return fx.Provide(
 		func(db *pgxpool.Pool, queries genlinks.Querier) *links.Service {
-			return links.NewService(db, queries, 5*time.Second)
+			return links.NewService(db, queries, 5*time.Second, []byte(os.Getenv("IP_HASH_KEY")))
 		},
 
 		func(db *pgxpool.Pool, queries gencodes.Querier, m mailer.Mailer) *activationcodes.Service {

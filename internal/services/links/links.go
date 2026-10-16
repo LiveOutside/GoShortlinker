@@ -2,25 +2,51 @@ package links
 
 import (
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
+	"errors"
 	dtolinks "goshortlinker/internal/data/dto/links"
 	genlinks "goshortlinker/internal/repos/gen/links"
 	"log"
+	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-func (s *Service) GetLink(share_code string) (dtolinks.RedirectResponse, error) {
+func (s *Service) GetLinkForRedirect(share_code string) (dtolinks.RedirectShareCodeResponse, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), s.maxTimeout)
 	defer cancel()
 
-	link, err := s.queries.GetOnlyLinkByShareCode(ctx, s.database, share_code)
+	link, err := s.queries.GetLinkByShareCode(ctx, s.database, share_code)
 	if err != nil {
-		log.Printf("Failed to retrieve link from share code: %v", err)
-		return dtolinks.RedirectResponse{}, err
+		if errors.Is(err, pgx.ErrNoRows) {
+			log.Printf("Link not found: %v", err)
+			return dtolinks.RedirectShareCodeResponse{}, ErrLinkNotFound
+		}
+		log.Printf("failed to get link: %v", err)
+		return dtolinks.RedirectShareCodeResponse{}, ErrInternal
 	}
 
-	return dtolinks.RedirectResponse{
-		RedirectTo: link,
+	if !link.IsActive {
+		log.Printf("link is no longer active")
+		return dtolinks.RedirectShareCodeResponse{}, ErrLinkUnavailable
+	}
+
+	if link.ValidUntil.Valid && link.ValidUntil.Time.Before(time.Now()) {
+		log.Printf("link expired")
+		return dtolinks.RedirectShareCodeResponse{}, ErrLinkUnavailable
+	}
+
+	if link.AllowedRedirects.Valid && link.Redirects >= link.AllowedRedirects.Int32 {
+		log.Printf("link has reached redirect threshold")
+		return dtolinks.RedirectShareCodeResponse{}, ErrLinkUnavailable
+	}
+
+	return dtolinks.RedirectShareCodeResponse{
+		ShareCode:     link.ShareCode,
+		RedirectTimer: link.RedirectTimer,
 	}, nil
 }
 
@@ -64,4 +90,78 @@ func (s *Service) SaveAndShortenLink(userID pgtype.Int4, request dtolinks.SaveRe
 	return dtolinks.LinkResponse{
 		ShareCode: link.ShareCode,
 	}, nil
+}
+
+func (s *Service) ConfirmRedirect(shareCode, ip string) (dtolinks.RedirectResponse, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), s.maxTimeout)
+	defer cancel()
+
+	link, err := s.queries.GetLinkByShareCode(ctx, s.database, shareCode)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			log.Printf("Link not found: %v", err)
+			return dtolinks.RedirectResponse{}, ErrLinkNotFound
+		}
+		log.Printf("failed to get link: %v", err)
+		return dtolinks.RedirectResponse{}, ErrInternal
+	}
+
+	if !link.OnlyUniqueRedirects {
+		return s.countRedirect(ctx, s.database, link.ID)
+	}
+
+	tx, err := s.database.Begin(ctx)
+	if err != nil {
+		log.Printf("failed to begin transaction: %v", err)
+		return dtolinks.RedirectResponse{}, ErrInternal
+	}
+	defer tx.Rollback(ctx)
+
+	inserted, err := s.queries.RecordVisit(ctx, tx, genlinks.RecordVisitParams{
+		LinkID: link.ID,
+		IpHash: s.hashIP(ip),
+	})
+	if err != nil {
+		log.Printf("failed to record visit: %v", err)
+		return dtolinks.RedirectResponse{}, ErrInternal
+	}
+
+	if inserted == 0 {
+		if !link.IsActive || (link.ValidUntil.Valid && link.ValidUntil.Time.Before(time.Now())) {
+			return dtolinks.RedirectResponse{}, ErrLinkUnavailable
+		}
+		return dtolinks.RedirectResponse{RedirectTo: link.RedirectTo}, nil
+	}
+
+	response, err := s.countRedirect(ctx, tx, link.ID)
+	if err != nil {
+		return dtolinks.RedirectResponse{}, ErrInternal
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		log.Printf("failed to commit transaction: %v", err)
+		return dtolinks.RedirectResponse{}, ErrInternal
+	}
+
+	return response, nil
+}
+
+func (s *Service) countRedirect(ctx context.Context, db genlinks.DBTX, linkID int32) (dtolinks.RedirectResponse, error) {
+	row, err := s.queries.ConfirmRedirect(ctx, db, linkID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return dtolinks.RedirectResponse{}, ErrLinkUnavailable
+		}
+		log.Printf("failed to confirm redirect: %v", err)
+		return dtolinks.RedirectResponse{}, ErrInternal
+	}
+	return dtolinks.RedirectResponse{
+		RedirectTo: row.RedirectTo,
+	}, nil
+}
+
+func (s *Service) hashIP(ip string) string {
+	mac := hmac.New(sha256.New, s.ipHashKey)
+	mac.Write([]byte(ip))
+	return hex.EncodeToString(mac.Sum(nil))
 }

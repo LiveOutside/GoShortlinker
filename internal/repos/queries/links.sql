@@ -25,7 +25,7 @@ SET redirects = redirects + 1
 WHERE id = $1
     AND is_active = TRUE
     AND (valid_until IS NULL OR valid_until > NOW())
-    AND (allowed_redirects IS NULL OR redirect < allowed_redirects)
+    AND (allowed_redirects IS NULL OR redirects < allowed_redirects)
 RETURNING redirect_to, redirects;
 
 -- name: HasVisited :one 
@@ -33,7 +33,7 @@ SELECT EXISTS(
     SELECT 1 FROM link_visits WHERE link_id = $1 AND ip_hash = $2
 ) AS visited;
 
--- name: RecordVisit :exec
+-- name: RecordVisit :execrows
 INSERT INTO link_visits (link_id, ip_hash)
 VALUES ($1, $2)
 ON CONFLICT (link_id, ip_hash) DO NOTHING;
