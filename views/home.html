@@ -78,11 +78,36 @@
   .result-row button:hover{background:#F3F4F6;}
   .num-row input:disabled{background:#F3F4F6;}
   button[type=submit]:disabled{opacity:.6;cursor:default;}
+
+  /* верхняя панель: «Войти» / имя пользователя */
+  .topbar{display:flex;justify-content:flex-end;align-items:center;gap:12px;margin-bottom:24px;}
+  .user-name{font-weight:600;}
+  .btn-login{
+    padding:7px 14px;border-radius:6px;background:var(--accent);color:#fff;
+    text-decoration:none;font-weight:600;font-size:13px;
+  }
+  .btn-login:hover{background:#1D4ED8;}
+  .btn-link{
+    background:none;border:none;padding:0;color:var(--text-muted);
+    cursor:pointer;font-size:13px;font-family:inherit;
+  }
+  .btn-link:hover{color:var(--text);text-decoration:underline;}
+
   [hidden]{display:none !important;}
 </style>
 </head>
 <body>
 <div class="wrap">
+
+  <div class="topbar">
+    {{if .IsAuthenticated}}
+      <span class="user-name">{{.User.Name}}</span>
+      <button type="button" class="btn-link" id="logout-btn">Выйти</button>
+    {{else}}
+      <a class="btn-login" href="/auth">Войти</a>
+    {{end}}
+  </div>
+
   <h1>Сократитель ссылок</h1>
   <p class="sub">
     {{if .IsAuthenticated}}Создание ссылки от имени {{.User.Name}}{{else}}Создание ссылки без входа в аккаунт{{end}}
@@ -167,6 +192,15 @@
   var submitBtn = form.querySelector('button[type=submit]');
   var f = form.elements;
 
+  // выход из аккаунта (кнопка есть только у авторизованного пользователя)
+  var logoutBtn = document.getElementById('logout-btn');
+  if (logoutBtn) {
+    logoutBtn.addEventListener('click', function () {
+      fetch('/logout', { method: 'POST', credentials: 'same-origin' })
+        .then(function () { location.href = '/auth'; });
+    });
+  }
+
   function pad(n) { return String(n).padStart(2, '0'); }
   function toLocalInput(d) {
     return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) +
@@ -217,6 +251,7 @@
     submitBtn.disabled = true;
     fetch('/', {
       method: 'POST',
+      credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(buildPayload())
     })
@@ -227,9 +262,7 @@
         return res.json();
       })
       .then(function (data) {
-        // сервер пока отдаёт "127.0.0.1/<код>" без схемы, берём только код
-        var code = String(data.shortened_link).split('/').pop();
-        resultLink.value = location.origin + '/' + code;
+        resultLink.value = location.origin + '/r/' + data.share_code;
         resultBox.hidden = false;
         resultLink.select();
       })

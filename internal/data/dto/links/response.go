@@ -15,5 +15,15 @@ type SaveResponse struct {
 }
 
 type LinkResponse struct {
-	ShortenedLink string `json:"shortened_link"`
+	ShareCode string `json:"share_code"`
+}
+
+type RedirectResponse struct {
+	RedirectTo    string `json:"redirect_to"`
+	RedirectTimer int32  `json:"redirect_timer"`
+}
+
+type RedirectShareCodeResponse struct {
+	ShareCode     string `json:"share_code"`
+	RedirectTimer int32  `json:"redirect_timer"`
 }

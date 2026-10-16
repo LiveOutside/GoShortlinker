@@ -6,7 +6,7 @@ CREATE TABLE link_visits (
     visited_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_link_visits_unique ON link_visits (link_id, ip_hash);
+CREATE UNIQUE INDEX idx_link_visits_unique ON link_visits (link_id, ip_hash);
 CREATE INDEX idx_link_visits_link_id ON link_visits (link_id);
 
 -- +goose Down

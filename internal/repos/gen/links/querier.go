@@ -12,9 +12,10 @@ type Querier interface {
 	ConfirmRedirect(ctx context.Context, db DBTX, id int32) (ConfirmRedirectRow, error)
 	DeleteLink(ctx context.Context, db DBTX, arg DeleteLinkParams) error
 	GetLinkByShareCode(ctx context.Context, db DBTX, shareCode string) (Link, error)
+	GetOnlyLinkByShareCode(ctx context.Context, db DBTX, shareCode string) (string, error)
 	HasVisited(ctx context.Context, db DBTX, arg HasVisitedParams) (bool, error)
 	IncrementRedirectCount(ctx context.Context, db DBTX, id int32) (int32, error)
-	RecordVisit(ctx context.Context, db DBTX, arg RecordVisitParams) error
+	RecordVisit(ctx context.Context, db DBTX, arg RecordVisitParams) (int64, error)
 	SaveLink(ctx context.Context, db DBTX, arg SaveLinkParams) (SaveLinkRow, error)
 	SetLinkActive(ctx context.Context, db DBTX, arg SetLinkActiveParams) error
 }

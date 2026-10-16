@@ -1,7 +1,7 @@
 package users
 
-type SaveResponse struct {
-	ID       uint   `json:"id"`
+type RegistrationResponse struct {
+	ID       int32  `json:"id"`
 	Username string `json:"username"`
 	Email    string `json:"email"`
 }

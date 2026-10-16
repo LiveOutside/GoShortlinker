@@ -17,7 +17,7 @@ SET redirects = redirects + 1
 WHERE id = $1
     AND is_active = TRUE
     AND (valid_until IS NULL OR valid_until > NOW())
-    AND (allowed_redirects IS NULL OR redirect < allowed_redirects)
+    AND (allowed_redirects IS NULL OR redirects < allowed_redirects)
 RETURNING redirect_to, redirects
 `
 
@@ -73,6 +73,19 @@ func (q *Queries) GetLinkByShareCode(ctx context.Context, db DBTX, shareCode str
 	return i, err
 }
 
+const getOnlyLinkByShareCode = `-- name: GetOnlyLinkByShareCode :one
+SELECT redirect_to
+FROM links
+WHERE share_code = $1
+`
+
+func (q *Queries) GetOnlyLinkByShareCode(ctx context.Context, db DBTX, shareCode string) (string, error) {
+	row := db.QueryRow(ctx, getOnlyLinkByShareCode, shareCode)
+	var redirect_to string
+	err := row.Scan(&redirect_to)
+	return redirect_to, err
+}
+
 const hasVisited = `-- name: HasVisited :one
 SELECT EXISTS(
     SELECT 1 FROM link_visits WHERE link_id = $1 AND ip_hash = $2
@@ -105,7 +118,7 @@ func (q *Queries) IncrementRedirectCount(ctx context.Context, db DBTX, id int32)
 	return redirects, err
 }
 
-const recordVisit = `-- name: RecordVisit :exec
+const recordVisit = `-- name: RecordVisit :execrows
 INSERT INTO link_visits (link_id, ip_hash)
 VALUES ($1, $2)
 ON CONFLICT (link_id, ip_hash) DO NOTHING
@@ -116,9 +129,12 @@ type RecordVisitParams struct {
 	IpHash string
 }
 
-func (q *Queries) RecordVisit(ctx context.Context, db DBTX, arg RecordVisitParams) error {
-	_, err := db.Exec(ctx, recordVisit, arg.LinkID, arg.IpHash)
-	return err
+func (q *Queries) RecordVisit(ctx context.Context, db DBTX, arg RecordVisitParams) (int64, error) {
+	result, err := db.Exec(ctx, recordVisit, arg.LinkID, arg.IpHash)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const saveLink = `-- name: SaveLink :one
@@ -174,17 +190,17 @@ func (q *Queries) SaveLink(ctx context.Context, db DBTX, arg SaveLinkParams) (Sa
 
 const setLinkActive = `-- name: SetLinkActive :exec
 UPDATE LINKS
-SET is_active = $2
-WHERE id = $1 AND created_by = $3
+SET is_active = $3
+WHERE id = $1 AND created_by = $2
 `
 
 type SetLinkActiveParams struct {
 	ID        int32
-	IsActive  bool
 	CreatedBy pgtype.Int4
+	IsActive  bool
 }
 
 func (q *Queries) SetLinkActive(ctx context.Context, db DBTX, arg SetLinkActiveParams) error {
-	_, err := db.Exec(ctx, setLinkActive, arg.ID, arg.IsActive, arg.CreatedBy)
+	_, err := db.Exec(ctx, setLinkActive, arg.ID, arg.CreatedBy, arg.IsActive)
 	return err
 }
