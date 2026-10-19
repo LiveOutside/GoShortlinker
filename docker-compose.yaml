@@ -57,6 +57,23 @@ services:
     environment:
       - TZ=Europe/Moscow
 
+  caddy:
+    image: caddy:2
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN_NAME: ${DOMAIN_NAME}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config 
+    depends_on:
+      - app
+
 volumes:
   local-data-postgres-goshortlinker:
+  caddy_data:
+  caddy_config:
 
