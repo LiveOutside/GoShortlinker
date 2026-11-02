@@ -55,6 +55,23 @@ func (q *Queries) CreateUser(ctx context.Context, db DBTX, arg CreateUserParams)
 	return i, err
 }
 
+const deleteIdentity = `-- name: DeleteIdentity :execrows
+DELETE FROM user_identities WHERE user_id = $1 AND provider = $2
+`
+
+type DeleteIdentityParams struct {
+	UserID   int32
+	Provider string
+}
+
+func (q *Queries) DeleteIdentity(ctx context.Context, db DBTX, arg DeleteIdentityParams) (int64, error) {
+	result, err := db.Exec(ctx, deleteIdentity, arg.UserID, arg.Provider)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const emailExists = `-- name: EmailExists :one
 SELECT EXISTS(SELECT 1 FROM users WHERE email = $1) AS exists
 `
@@ -77,6 +94,33 @@ func (q *Queries) GetPasswdHash(ctx context.Context, db DBTX, email string) (str
 	var password_hash string
 	err := row.Scan(&password_hash)
 	return password_hash, err
+}
+
+const getProfile = `-- name: GetProfile :one
+
+SELECT username, email, COALESCE(title, '')::text AS title, COALESCE(bio, '')::text AS bio
+FROM users
+WHERE id = $1
+`
+
+type GetProfileRow struct {
+	Username string
+	Email    string
+	Title    string
+	Bio      string
+}
+
+// профиль
+func (q *Queries) GetProfile(ctx context.Context, db DBTX, id int32) (GetProfileRow, error) {
+	row := db.QueryRow(ctx, getProfile, id)
+	var i GetProfileRow
+	err := row.Scan(
+		&i.Username,
+		&i.Email,
+		&i.Title,
+		&i.Bio,
+	)
+	return i, err
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
@@ -104,6 +148,120 @@ func (q *Queries) GetUserByEmail(ctx context.Context, db DBTX, email string) (Ge
 		&i.IsActive,
 	)
 	return i, err
+}
+
+const getUserByIdentity = `-- name: GetUserByIdentity :one
+
+SELECT u.id, u.username, u.is_active
+FROM users u
+JOIN user_identities i ON i.user_id = u.id
+WHERE i.provider = $1 AND i.provider_user_id = $2
+`
+
+type GetUserByIdentityParams struct {
+	Provider       string
+	ProviderUserID string
+}
+
+type GetUserByIdentityRow struct {
+	ID       int32
+	Username string
+	IsActive bool
+}
+
+// привязки соцсетей
+func (q *Queries) GetUserByIdentity(ctx context.Context, db DBTX, arg GetUserByIdentityParams) (GetUserByIdentityRow, error) {
+	row := db.QueryRow(ctx, getUserByIdentity, arg.Provider, arg.ProviderUserID)
+	var i GetUserByIdentityRow
+	err := row.Scan(&i.ID, &i.Username, &i.IsActive)
+	return i, err
+}
+
+const listIdentities = `-- name: ListIdentities :many
+SELECT provider FROM user_identities WHERE user_id = $1
+`
+
+func (q *Queries) ListIdentities(ctx context.Context, db DBTX, userID int32) ([]string, error) {
+	rows, err := db.Query(ctx, listIdentities, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var provider string
+		if err := rows.Scan(&provider); err != nil {
+			return nil, err
+		}
+		items = append(items, provider)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const updateProfile = `-- name: UpdateProfile :one
+UPDATE users
+SET username = $1,
+    email = $2,
+    title = NULLIF($3::text, ''),
+    bio = NULLIF($4::text, ''),
+    updated_at = NOW()
+WHERE id = $5
+RETURNING username, email, COALESCE(title, '')::text AS title, COALESCE(bio, '')::text AS bio
+`
+
+type UpdateProfileParams struct {
+	Username string
+	Email    string
+	Title    string
+	Bio      string
+	ID       int32
+}
+
+type UpdateProfileRow struct {
+	Username string
+	Email    string
+	Title    string
+	Bio      string
+}
+
+func (q *Queries) UpdateProfile(ctx context.Context, db DBTX, arg UpdateProfileParams) (UpdateProfileRow, error) {
+	row := db.QueryRow(ctx, updateProfile,
+		arg.Username,
+		arg.Email,
+		arg.Title,
+		arg.Bio,
+		arg.ID,
+	)
+	var i UpdateProfileRow
+	err := row.Scan(
+		&i.Username,
+		&i.Email,
+		&i.Title,
+		&i.Bio,
+	)
+	return i, err
+}
+
+const upsertIdentity = `-- name: UpsertIdentity :exec
+INSERT INTO user_identities (user_id, provider, provider_user_id)
+VALUES ($1, $2, $3)
+ON CONFLICT (user_id, provider) DO UPDATE
+SET provider_user_id = EXCLUDED.provider_user_id, created_at = NOW()
+`
+
+type UpsertIdentityParams struct {
+	UserID         int32
+	Provider       string
+	ProviderUserID string
+}
+
+// Привязать или перепривязать (замена без удаления)
+func (q *Queries) UpsertIdentity(ctx context.Context, db DBTX, arg UpsertIdentityParams) error {
+	_, err := db.Exec(ctx, upsertIdentity, arg.UserID, arg.Provider, arg.ProviderUserID)
+	return err
 }
 
 const usernameExists = `-- name: UsernameExists :one

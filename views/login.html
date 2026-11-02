@@ -55,6 +55,13 @@
   }
   [hidden]{display:none !important;}
 
+  .social{display:flex;flex-direction:column;gap:8px;margin-top:16px;}
+  .btn-social{
+    display:block;text-align:center;padding:9px;border:1px solid var(--border);
+    border-radius:6px;background:#fff;color:var(--text);text-decoration:none;font-size:14px;
+  }
+  .btn-social:hover{background:#F3F4F6;}
+
   .foot{text-align:center;font-size:13px;color:var(--text-muted);margin-top:16px;}
   .foot a{color:var(--accent);text-decoration:none;}
   .foot a:hover{text-decoration:underline;}
@@ -66,7 +73,7 @@
   <p class="sub">Войдите, чтобы управлять своими ссылками</p>
 
   <div class="panel">
-    <div class="errors" id="errors" role="alert" hidden></div>
+    <div class="errors" id="errors" role="alert" {{if not .Error}}hidden{{end}}>{{.Error}}</div>
 
     <form id="login-form" novalidate>
       <div class="field">
@@ -81,6 +88,11 @@
 
       <button type="submit">Войти</button>
     </form>
+
+    <div class="social">
+      <a class="btn-social" href="/auth/vk">Войти через VK</a>
+      <a class="btn-social" href="/auth/telegram">Войти через Telegram</a>
+    </div>
 
     <p class="foot">Нет аккаунта? <a href="/register">Зарегистрироваться</a></p>
   </div>

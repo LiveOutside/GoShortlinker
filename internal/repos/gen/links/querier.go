@@ -9,10 +9,11 @@ import (
 )
 
 type Querier interface {
-	ConfirmRedirect(ctx context.Context, db DBTX, id int32) (ConfirmRedirectRow, error)
+	ConfirmRedirect(ctx context.Context, db DBTX, arg ConfirmRedirectParams) (ConfirmRedirectRow, error)
 	DeleteLink(ctx context.Context, db DBTX, arg DeleteLinkParams) error
 	GetLinkByShareCode(ctx context.Context, db DBTX, shareCode string) (Link, error)
 	GetOnlyLinkByShareCode(ctx context.Context, db DBTX, shareCode string) (string, error)
+	GetRedirectStats(ctx context.Context, db DBTX, arg GetRedirectStatsParams) (GetRedirectStatsRow, error)
 	HasVisited(ctx context.Context, db DBTX, arg HasVisitedParams) (bool, error)
 	IncrementRedirectCount(ctx context.Context, db DBTX, id int32) (int32, error)
 	RecordVisit(ctx context.Context, db DBTX, arg RecordVisitParams) (int64, error)

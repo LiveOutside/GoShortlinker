@@ -39,7 +39,7 @@
     width:100%;padding:9px 10px;border:1px solid var(--border);border-radius:6px;
     font-size:14px;font-family:inherit;color:var(--text);background:#fff;
   }
-  input:focus-visible, select:focus-visible, button:focus-visible{
+  input:focus-visible, select:focus-visible, button:focus-visible, a:focus-visible{
     outline:2px solid var(--accent);outline-offset:1px;
   }
 
@@ -79,9 +79,12 @@
   .num-row input:disabled{background:#F3F4F6;}
   button[type=submit]:disabled{opacity:.6;cursor:default;}
 
-  /* верхняя панель: «Войти» / имя пользователя */
+  /* верхняя панель: «Войти» / ник (ссылка на профиль) */
   .topbar{display:flex;justify-content:flex-end;align-items:center;gap:12px;margin-bottom:24px;}
-  .user-name{font-weight:600;}
+  .user-name{
+    font-weight:600;color:var(--text);text-decoration:none;
+  }
+  .user-name:hover{color:var(--accent);text-decoration:underline;}
   .btn-login{
     padding:7px 14px;border-radius:6px;background:var(--accent);color:#fff;
     text-decoration:none;font-weight:600;font-size:13px;
@@ -101,7 +104,7 @@
 
   <div class="topbar">
     {{if .IsAuthenticated}}
-      <span class="user-name">{{.User.Name}}</span>
+      <a class="user-name" href="/profile" title="Перейти в профиль">{{.User.Name}}</a>
       <button type="button" class="btn-link" id="logout-btn">Выйти</button>
     {{else}}
       <a class="btn-login" href="/auth">Войти</a>

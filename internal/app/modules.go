@@ -91,6 +91,9 @@ func ModuleHandlers() fx.Option {
 		handlers.NewRegistrationHandler,
 		handlers.NewMailerHandler,
 		handlers.NewAuthenticationHandler,
+		handlers.NewProfileHandler,
+		handlers.NewStatsHandler,
+		handlers.NewSocialHandler,
 	)
 }
 
@@ -105,6 +108,9 @@ func ModuleApp() fx.Option {
 				registrationHandler *handlers.RegistrationHandler,
 				mailHandler *handlers.MailerHandler,
 				authHandler *handlers.AuthenticationHandler,
+				profileHandler *handlers.ProfileHandler,
+				statsHandler *handlers.StatsHandler,
+				socialHandler *handlers.SocialHandler,
 				tokens *authservice.TokenManager,
 			) {
 				application.Use(middleware.Authenticate(tokens))
@@ -114,6 +120,9 @@ func ModuleApp() fx.Option {
 					RegistrationHandler:   registrationHandler,
 					MailHandler:           mailHandler,
 					AuthenticationHandler: authHandler,
+					ProfileHandler:        profileHandler,
+					StatsHandler:          statsHandler,
+					SocialHandler:         socialHandler,
 				})
 
 				lc.Append(fx.Hook{

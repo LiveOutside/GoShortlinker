@@ -147,7 +147,11 @@ func (s *Service) ConfirmRedirect(shareCode, ip string) (dtolinks.RedirectRespon
 }
 
 func (s *Service) countRedirect(ctx context.Context, db genlinks.DBTX, linkID int32) (dtolinks.RedirectResponse, error) {
-	row, err := s.queries.ConfirmRedirect(ctx, db, linkID)
+	row, err := s.queries.ConfirmRedirect(ctx, db, genlinks.ConfirmRedirectParams{
+		LinkID: linkID,
+		Tz:     statsTZ,
+	})
+
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return dtolinks.RedirectResponse{}, ErrLinkUnavailable

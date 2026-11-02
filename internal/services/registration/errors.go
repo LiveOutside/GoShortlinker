@@ -7,4 +7,5 @@ var (
 	ErrEmailAlreadyExists    = errors.New("email already exists")
 	ErrUsernameAlreadyExists = errors.New("username already exists")
 	ErrInternal              = errors.New("internal error")
+	ErrUserNotFound          = errors.New("user not found")
 )

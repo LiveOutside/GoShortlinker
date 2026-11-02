@@ -11,9 +11,18 @@ import (
 type Querier interface {
 	ActivateUser(ctx context.Context, db DBTX, id int32) error
 	CreateUser(ctx context.Context, db DBTX, arg CreateUserParams) (CreateUserRow, error)
+	DeleteIdentity(ctx context.Context, db DBTX, arg DeleteIdentityParams) (int64, error)
 	EmailExists(ctx context.Context, db DBTX, email string) (bool, error)
 	GetPasswdHash(ctx context.Context, db DBTX, email string) (string, error)
+	// профиль
+	GetProfile(ctx context.Context, db DBTX, id int32) (GetProfileRow, error)
 	GetUserByEmail(ctx context.Context, db DBTX, email string) (GetUserByEmailRow, error)
+	// привязки соцсетей
+	GetUserByIdentity(ctx context.Context, db DBTX, arg GetUserByIdentityParams) (GetUserByIdentityRow, error)
+	ListIdentities(ctx context.Context, db DBTX, userID int32) ([]string, error)
+	UpdateProfile(ctx context.Context, db DBTX, arg UpdateProfileParams) (UpdateProfileRow, error)
+	// Привязать или перепривязать (замена без удаления)
+	UpsertIdentity(ctx context.Context, db DBTX, arg UpsertIdentityParams) error
 	UsernameExists(ctx context.Context, db DBTX, username string) (bool, error)
 }
 

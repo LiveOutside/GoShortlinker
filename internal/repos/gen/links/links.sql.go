@@ -12,22 +12,36 @@ import (
 )
 
 const confirmRedirect = `-- name: ConfirmRedirect :one
-UPDATE links
-SET redirects = redirects + 1
-WHERE id = $1
-    AND is_active = TRUE
-    AND (valid_until IS NULL OR valid_until > NOW())
-    AND (allowed_redirects IS NULL OR redirects < allowed_redirects)
-RETURNING redirect_to, redirects
+WITH confirmed AS (
+    UPDATE links
+    SET redirects = redirects + 1
+    WHERE id = $1
+        AND is_active = TRUE
+        AND (valid_until IS NULL OR valid_until > NOW())
+        AND (allowed_redirects IS NULL OR redirects < allowed_redirects)
+    RETURNING id, redirect_to, redirects
+), daily AS (
+    INSERT INTO link_daily_stats (link_id, day, redirects)
+    SELECT id, (NOW() AT TIME ZONE $2::text)::date, 1
+    FROM confirmed
+    ON CONFLICT (link_id, day)
+    DO UPDATE SET redirects = link_daily_stats.redirects + 1
+)
+SELECT redirect_to, redirects FROM confirmed
 `
+
+type ConfirmRedirectParams struct {
+	LinkID int32
+	Tz     string
+}
 
 type ConfirmRedirectRow struct {
 	RedirectTo string
 	Redirects  int32
 }
 
-func (q *Queries) ConfirmRedirect(ctx context.Context, db DBTX, id int32) (ConfirmRedirectRow, error) {
-	row := db.QueryRow(ctx, confirmRedirect, id)
+func (q *Queries) ConfirmRedirect(ctx context.Context, db DBTX, arg ConfirmRedirectParams) (ConfirmRedirectRow, error) {
+	row := db.QueryRow(ctx, confirmRedirect, arg.LinkID, arg.Tz)
 	var i ConfirmRedirectRow
 	err := row.Scan(&i.RedirectTo, &i.Redirects)
 	return i, err
@@ -84,6 +98,43 @@ func (q *Queries) GetOnlyLinkByShareCode(ctx context.Context, db DBTX, shareCode
 	var redirect_to string
 	err := row.Scan(&redirect_to)
 	return redirect_to, err
+}
+
+const getRedirectStats = `-- name: GetRedirectStats :one
+SELECT
+    COALESCE((SELECT SUM(redirects) FROM links), 0)::bigint AS total,
+    COALESCE((SELECT SUM(redirects) FROM links
+              WHERE created_by = $1::int), 0)::bigint AS total_mine,
+    COALESCE((SELECT SUM(redirects) FROM link_daily_stats
+              WHERE day = (NOW() AT TIME ZONE $2::text)::date), 0)::bigint AS today,
+    COALESCE((SELECT SUM(s.redirects) FROM link_daily_stats s
+              JOIN links l ON l.id = s.link_id
+              WHERE l.created_by = $1::int
+                AND s.day = (NOW() AT TIME ZONE $2::text)::date), 0)::bigint AS today_mine
+`
+
+type GetRedirectStatsParams struct {
+	UserID int32
+	Tz     string
+}
+
+type GetRedirectStatsRow struct {
+	Total     int64
+	TotalMine int64
+	Today     int64
+	TodayMine int64
+}
+
+func (q *Queries) GetRedirectStats(ctx context.Context, db DBTX, arg GetRedirectStatsParams) (GetRedirectStatsRow, error) {
+	row := db.QueryRow(ctx, getRedirectStats, arg.UserID, arg.Tz)
+	var i GetRedirectStatsRow
+	err := row.Scan(
+		&i.Total,
+		&i.TotalMine,
+		&i.Today,
+		&i.TodayMine,
+	)
+	return i, err
 }
 
 const hasVisited = `-- name: HasVisited :one

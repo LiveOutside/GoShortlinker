@@ -16,6 +16,12 @@ import (
 
 var validate = validator.New()
 
+var authErrors = map[string]string{
+	"social_not_linked": "Пользователь с такой привязкой не найден. Привяжите соцсеть в профиле прежде чем использовать для входа",
+	"oauth":             "Не удалось войти через соцсеть, попробуйте ещё раз",
+	"server":            "Внутренняя ошибка сервера",
+}
+
 type AuthenticationHandler struct {
 	service      *authservice.Service
 	secureCookie bool
@@ -32,7 +38,9 @@ func (h *AuthenticationHandler) Get(c fiber.Ctx) error {
 	if _, ok := middleware.UserID(c); ok {
 		return c.Redirect().To("/")
 	}
-	return c.Render("login", fiber.Map{})
+	return c.Render("login", fiber.Map{
+		"Error": authErrors[c.Query("error")],
+	})
 }
 
 func (h *AuthenticationHandler) Post(c fiber.Ctx) error {

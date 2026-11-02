@@ -20,13 +20,34 @@ WHERE id = $1 AND (allowed_redirects IS NULL OR redirects < allowed_redirects)
 RETURNING redirects;
 
 -- name: ConfirmRedirect :one
-UPDATE links
-SET redirects = redirects + 1
-WHERE id = $1
-    AND is_active = TRUE
-    AND (valid_until IS NULL OR valid_until > NOW())
-    AND (allowed_redirects IS NULL OR redirects < allowed_redirects)
-RETURNING redirect_to, redirects;
+WITH confirmed AS (
+    UPDATE links
+    SET redirects = redirects + 1
+    WHERE id = sqlc.arg(link_id)
+        AND is_active = TRUE
+        AND (valid_until IS NULL OR valid_until > NOW())
+        AND (allowed_redirects IS NULL OR redirects < allowed_redirects)
+    RETURNING id, redirect_to, redirects
+), daily AS (
+    INSERT INTO link_daily_stats (link_id, day, redirects)
+    SELECT id, (NOW() AT TIME ZONE sqlc.arg(tz)::text)::date, 1
+    FROM confirmed
+    ON CONFLICT (link_id, day)
+    DO UPDATE SET redirects = link_daily_stats.redirects + 1
+)
+SELECT redirect_to, redirects FROM confirmed;
+
+-- name: GetRedirectStats :one
+SELECT
+    COALESCE((SELECT SUM(redirects) FROM links), 0)::bigint AS total,
+    COALESCE((SELECT SUM(redirects) FROM links
+              WHERE created_by = sqlc.arg(user_id)::int), 0)::bigint AS total_mine,
+    COALESCE((SELECT SUM(redirects) FROM link_daily_stats
+              WHERE day = (NOW() AT TIME ZONE sqlc.arg(tz)::text)::date), 0)::bigint AS today,
+    COALESCE((SELECT SUM(s.redirects) FROM link_daily_stats s
+              JOIN links l ON l.id = s.link_id
+              WHERE l.created_by = sqlc.arg(user_id)::int
+                AND s.day = (NOW() AT TIME ZONE sqlc.arg(tz)::text)::date), 0)::bigint AS today_mine;
 
 -- name: HasVisited :one 
 SELECT EXISTS(
@@ -46,4 +67,3 @@ WHERE id = $1 AND created_by = $2;
 -- name: DeleteLink :exec
 DELETE FROM links 
 WHERE id = $1 AND created_by = $2;
-

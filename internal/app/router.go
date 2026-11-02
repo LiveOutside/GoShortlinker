@@ -14,6 +14,9 @@ type Handlers struct {
 	RegistrationHandler   *handlers.RegistrationHandler
 	MailHandler           *handlers.MailerHandler
 	AuthenticationHandler *handlers.AuthenticationHandler
+	ProfileHandler        *handlers.ProfileHandler
+	StatsHandler          *handlers.StatsHandler
+	SocialHandler         *handlers.SocialHandler
 }
 
 func RegisterRoutes(app *fiber.App, handlers Handlers) {
@@ -45,6 +48,15 @@ func RegisterRoutes(app *fiber.App, handlers Handlers) {
 	app.Get("/auth", guestOnly, handlers.AuthenticationHandler.Get)
 	app.Post("/auth", loginLimiter, handlers.AuthenticationHandler.Post)
 	app.Post("/logout", handlers.AuthenticationHandler.Logout)
+
+	app.Get("/auth/:provider/callback", handlers.SocialHandler.Callback)
+	app.Get("/auth/:provider", guestOnly, handlers.SocialHandler.StartLogin)
+
+	app.Get("/profile", handlers.ProfileHandler.Get)
+	app.Put("/profile", handlers.ProfileHandler.Update)
+	app.Get("/profile/stats", handlers.StatsHandler.Get)
+	app.Get("/profile/social/:provider/link", handlers.SocialHandler.StartLink)
+	app.Post("/profile/social/:provider/unlink", handlers.SocialHandler.Unlink)
 
 	app.Use(func(c fiber.Ctx) error {
 		return c.Status(fiber.StatusNotFound).Render("404", fiber.Map{
