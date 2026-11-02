@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Переадресация — Сократитель ссылок</title>
+<style>
+  :root{
+    --bg:#F7F7F8;
+    --surface:#FFFFFF;
+    --border:#E1E3E7;
+    --text:#1D2027;
+    --text-muted:#6B7280;
+    --accent:#2563EB;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    font-size:14px;
+    line-height:1.5;
+  }
+  .wrap{max-width:400px;margin:80px auto;padding:0 20px;}
+  .panel{
+    background:var(--surface);border:1px solid var(--border);border-radius:8px;
+    padding:32px 24px;text-align:center;
+  }
+  h1{font-size:18px;margin:0 0 6px;}
+  .sub{color:var(--text-muted);margin:0 0 20px;}
+  .counter{font-size:56px;font-weight:700;color:var(--accent);line-height:1;margin-bottom:20px;}
+  .bar{height:4px;background:var(--border);border-radius:2px;overflow:hidden;}
+  .bar > div{height:100%;width:0;background:var(--accent);transition:width 1s linear;}
+  .btn{
+    display:inline-block;padding:10px 20px;border-radius:6px;
+    background:var(--accent);color:#fff;font-size:14px;font-weight:600;text-decoration:none;
+  }
+  .btn:hover{background:#1D4ED8;}
+  [hidden]{display:none !important;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="panel" id="app" data-code="{{.ShareCode}}" data-timer="{{.RedirectTimer}}">
+    <h1 id="title">Переходим по ссылке</h1>
+    <p class="sub" id="sub">Вы будете перенаправлены автоматически</p>
+
+    <div class="counter" id="counter">{{.RedirectTimer}}</div>
+    <div class="bar" id="bar-wrap"><div id="bar"></div></div>
+
+    <a class="btn" id="home" href="/" hidden>Создать свою ссылку</a>
+    <noscript><p class="sub">Для перехода по ссылке нужен включённый JavaScript.</p></noscript>
+  </div>
+</div>
+
+<script>
+(function () {
+  var app = document.getElementById('app');
+  var code = app.dataset.code;
+  var total = parseInt(app.dataset.timer, 10) || 0;
+  var left = total;
+
+  var titleEl = document.getElementById('title');
+  var subEl = document.getElementById('sub');
+  var counter = document.getElementById('counter');
+  var barWrap = document.getElementById('bar-wrap');
+  var bar = document.getElementById('bar');
+  var homeLink = document.getElementById('home');
+
+  // ссылка могла стать недействительной, пока шёл таймер
+  function showFailure(title, message) {
+    counter.hidden = true;
+    barWrap.hidden = true;
+    titleEl.textContent = title;
+    subEl.textContent = message;
+    subEl.style.marginBottom = '24px';
+    homeLink.hidden = false;
+  }
+
+  function confirmRedirect() {
+    fetch('/r/' + encodeURIComponent(code) + '/confirm', { method: 'POST' })
+      .then(function (res) {
+        return res.json().then(function (data) {
+          if (!res.ok) { throw { status: res.status, message: data.error }; }
+          return data;
+        });
+      })
+      .then(function (data) {
+        // переходим только на http(s), чтобы javascript:-URL не мог выполниться
+        if (!/^https?:\/\//i.test(data.redirect_to)) {
+          throw { status: 0, message: 'Некорректный адрес перенаправления' };
+        }
+        location.href = data.redirect_to;
+      })
+      .catch(function (err) {
+        if (err && (err.status === 404 || err.status === 410)) {
+          showFailure('Ссылка больше не действует',
+            'Срок действия истёк, лимит переходов исчерпан или ссылка отключена владельцем.');
+        } else {
+          showFailure('Не удалось выполнить переход',
+            (err && err.message) || 'Попробуйте обновить страницу позже.');
+        }
+      });
+  }
+
+  function tick() {
+    counter.textContent = left;
+    bar.style.width = (total === 0 ? 100 : ((total - left) / total) * 100) + '%';
+
+    if (left <= 0) { confirmRedirect(); return; }
+    left--;
+    setTimeout(tick, 1000);
+  }
+
+  tick();
+})();
+</script>
+</body>
+</html>

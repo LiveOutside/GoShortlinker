@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Профиль — Сократитель ссылок</title>
+<style>
+  :root{
+    --bg:#F7F7F8;
+    --surface:#FFFFFF;
+    --border:#E1E3E7;
+    --text:#1D2027;
+    --text-muted:#6B7280;
+    --accent:#2563EB;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    font-size:14px;
+    line-height:1.5;
+  }
+  .wrap{max-width:480px;margin:60px auto;padding:0 20px;}
+  h1{font-size:20px;margin:0 0 6px;}
+  .sub{color:var(--text-muted);margin:0 0 24px;}
+
+  .topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;}
+  .topbar a{color:var(--text-muted);text-decoration:none;font-size:13px;}
+  .topbar a:hover{color:var(--text);text-decoration:underline;}
+
+  .tabs{display:flex;gap:4px;border-bottom:1px solid var(--border);margin-bottom:16px;}
+  .tab{
+    padding:8px 14px;border:none;background:none;font:inherit;color:var(--text-muted);
+    cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;
+  }
+  .tab:hover{color:var(--text);}
+  .tab[aria-selected="true"]{color:var(--text);font-weight:600;border-bottom-color:var(--accent);}
+
+  .panel{
+    background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:24px;
+  }
+
+  .field{margin-bottom:16px;}
+  .field label{display:block;font-size:13px;font-weight:500;margin-bottom:5px;}
+  .field label .req{color:#DC2626;}
+  .hint{font-size:12px;color:#9AA0AC;margin-top:4px;display:flex;justify-content:space-between;gap:8px;}
+
+  input[type=text], input[type=email], textarea{
+    width:100%;padding:9px 10px;border:1px solid var(--border);border-radius:6px;
+    font-size:14px;font-family:inherit;color:var(--text);background:#fff;
+  }
+  textarea{resize:vertical;min-height:96px;}
+  input:focus-visible, textarea:focus-visible, button:focus-visible, a:focus-visible{
+    outline:2px solid var(--accent);outline-offset:1px;
+  }
+
+  .btn{
+    padding:7px 12px;border:1px solid var(--border);border-radius:6px;background:#fff;
+    font-size:13px;font-family:inherit;cursor:pointer;color:var(--text);
+    text-decoration:none;display:inline-block;
+  }
+  .btn:hover{background:#F3F4F6;}
+  .btn-danger{color:#DC2626;}
+
+  button[type=submit]{
+    width:100%;margin-top:6px;padding:10px;border:none;border-radius:6px;
+    background:var(--accent);color:#fff;font-size:14px;font-weight:600;cursor:pointer;
+  }
+  button[type=submit]:hover{background:#1D4ED8;}
+  button[type=submit]:disabled{opacity:.6;cursor:default;}
+
+  .errors{
+    color:#DC2626;font-size:13px;background:#FEF2F2;border:1px solid #FBD5D5;
+    border-radius:6px;padding:10px 12px;margin-bottom:16px;
+  }
+  .success{
+    color:#166534;font-size:13px;background:#F0FDF4;border:1px solid #BBF7D0;
+    border-radius:6px;padding:10px 12px;margin-bottom:16px;
+  }
+  [hidden]{display:none !important;}
+
+  .social-title{font-size:14px;font-weight:600;margin:28px 0 8px;}
+  .social-row{
+    display:flex;align-items:center;justify-content:space-between;gap:8px;
+    padding:10px 0;border-top:1px solid var(--border);
+  }
+  .social-actions{display:flex;gap:8px;}
+
+  .stats p{margin:0 0 16px;}
+  .stats p:last-child{margin-bottom:0;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topbar">
+    <a href="/">← На главную</a>
+    <span id="topbar-name">{{.Profile.Username}}</span>
+  </div>
+
+  <h1>Профиль</h1>
+  <p class="sub">Эти данные видны в вашем аккаунте.</p>
+
+  <div class="tabs" role="tablist">
+    <button type="button" class="tab" role="tab" id="tab-btn-profile"
+            aria-selected="true" aria-controls="tab-profile">Профиль</button>
+    <button type="button" class="tab" role="tab" id="tab-btn-stats"
+            aria-selected="false" aria-controls="tab-stats">Статистика</button>
+  </div>
+
+  <!-- ===== Вкладка «Профиль» ===== -->
+  <div class="panel" id="tab-profile" role="tabpanel">
+    <div class="errors" id="errors" role="alert" hidden></div>
+    <div class="success" id="success" role="status" hidden>Профиль сохранён</div>
+
+    <form id="profile-form" novalidate>
+      <div class="field">
+        <label for="username">Имя пользователя <span class="req">*</span></label>
+        <input type="text" id="username" name="username" value="{{.Profile.Username}}"
+               minlength="3" maxlength="32" pattern="[A-Za-z0-9]+" autocomplete="username" required>
+        <div class="hint"><span>3–32 символа: латинские буквы и цифры</span></div>
+      </div>
+
+      <div class="field">
+        <label for="email">Email <span class="req">*</span></label>
+        <input type="email" id="email" name="email" value="{{.Profile.Email}}"
+               maxlength="255" autocomplete="email" required>
+      </div>
+
+      <div class="field">
+        <label for="title">Должность / заголовок</label>
+        <input type="text" id="title" name="title" value="{{.Profile.Title}}" maxlength="100"
+               placeholder="Например, Backend-разработчик">
+        <div class="hint"><span></span><span id="title-count">0/100</span></div>
+      </div>
+
+      <div class="field">
+        <label for="bio">О себе</label>
+        <textarea id="bio" name="bio" maxlength="500" placeholder="Расскажите о себе">{{.Profile.Bio}}</textarea>
+        <div class="hint"><span></span><span id="bio-count">0/500</span></div>
+      </div>
+
+      <button type="submit">Сохранить</button>
+    </form>
+
+    <div class="social-title">Привязанные соцсети</div>
+    {{if .SocialError}}<div class="errors">{{.SocialError}}</div>{{end}}
+
+    {{range .Socials}}
+    <div class="social-row">
+      <span>{{.Title}}</span>
+      <div class="social-actions">
+        {{if .Linked}}
+          <a class="btn" href="/profile/social/{{.Key}}/link">Перепривязать</a>
+          <button type="button" class="btn btn-danger" data-unlink="{{.Key}}">Удалить привязку</button>
+        {{else}}
+          <a class="btn" href="/profile/social/{{.Key}}/link">Привязать</a>
+        {{end}}
+      </div>
+    </div>
+    {{end}}
+  </div>
+
+  <!-- ===== Вкладка «Статистика» ===== -->
+  <div class="panel stats" id="tab-stats" role="tabpanel" hidden>
+    <div class="errors" id="stats-error" role="alert" hidden></div>
+    <p>Всего переадресаций: <span data-stat="total">…</span></p>
+    <p>Переадресаций по вашим ссылкам: <span data-stat="total_mine">…</span></p>
+    <p>Всего переадресаций за день: <span data-stat="today">…</span></p>
+    <p>Переадресаций по вашим ссылкам за день: <span data-stat="today_mine">…</span></p>
+  </div>
+</div>
+
+<script>
+(function () {
+  // ---------- общий разбор ответа сервера ----------
+  function parse(res) {
+    return res.json().catch(function () { return {}; }).then(function (data) {
+      if (data.redirect_to && res.status === 401) { location.href = data.redirect_to; }
+      if (!res.ok) throw new Error(data.error || ('Ошибка ' + res.status));
+      return data;
+    });
+  }
+
+  // ---------- вкладки ----------
+  var tabs = {
+    profile: { btn: document.getElementById('tab-btn-profile'), panel: document.getElementById('tab-profile') },
+    stats:   { btn: document.getElementById('tab-btn-stats'),   panel: document.getElementById('tab-stats') }
+  };
+  var statsError = document.getElementById('stats-error');
+
+  function loadStats() {
+    statsError.hidden = true;
+    fetch('/profile/stats', { credentials: 'same-origin' })
+      .then(parse)
+      .then(function (data) {
+        ['total', 'total_mine', 'today', 'today_mine'].forEach(function (key) {
+          var el = document.querySelector('[data-stat="' + key + '"]');
+          el.textContent = Number(data[key]).toLocaleString('ru-RU');
+        });
+      })
+      .catch(function (err) {
+        statsError.textContent = err.message;
+        statsError.hidden = false;
+      });
+  }
+
+  function select(name) {
+    Object.keys(tabs).forEach(function (key) {
+      var active = key === name;
+      tabs[key].btn.setAttribute('aria-selected', active ? 'true' : 'false');
+      tabs[key].panel.hidden = !active;
+    });
+    history.replaceState(null, '', name === 'stats' ? '#stats' : location.pathname + location.search);
+    if (name === 'stats') loadStats();
+  }
+
+  tabs.profile.btn.addEventListener('click', function () { select('profile'); });
+  tabs.stats.btn.addEventListener('click', function () { select('stats'); });
+  if (location.hash === '#stats') select('stats');
+
+  // ---------- форма профиля ----------
+  var form = document.getElementById('profile-form');
+  var f = form.elements;
+  var errorsBox = document.getElementById('errors');
+  var successBox = document.getElementById('success');
+  var submitBtn = form.querySelector('button[type=submit]');
+  var topbarName = document.getElementById('topbar-name');
+
+  function showError(msg) {
+    errorsBox.textContent = msg;
+    errorsBox.hidden = false;
+    successBox.hidden = true;
+  }
+  function clearMessages() {
+    errorsBox.hidden = true;
+    successBox.hidden = true;
+  }
+
+  function bindCounter(input, counterId, max) {
+    var counter = document.getElementById(counterId);
+    function update() { counter.textContent = input.value.length + '/' + max; }
+    input.addEventListener('input', update);
+    update();
+  }
+  bindCounter(f.title, 'title-count', 100);
+  bindCounter(f.bio, 'bio-count', 500);
+
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    clearMessages();
+
+    f.username.value = f.username.value.trim();
+    f.email.value = f.email.value.trim();
+    if (!form.checkValidity()) { form.reportValidity(); return; }
+
+    submitBtn.disabled = true;
+    fetch('/profile', {
+      method: 'PUT',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        username: f.username.value,
+        email: f.email.value,
+        title: f.title.value.trim(),
+        bio: f.bio.value.trim()
+      })
+    })
+      .then(parse)
+      .then(function (data) {
+        // подставляем то, что реально сохранено сервером (email приводится к нижнему регистру)
+        f.username.value = data.username;
+        f.email.value = data.email;
+        f.title.value = data.title;
+        f.bio.value = data.bio;
+        f.title.dispatchEvent(new Event('input'));
+        f.bio.dispatchEvent(new Event('input'));
+        topbarName.textContent = data.username;
+        successBox.hidden = false;
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      })
+      .catch(function (err) { showError(err.message); })
+      .then(function () { submitBtn.disabled = false; });
+  });
+
+  // ---------- удаление привязки соцсети ----------
+  document.querySelectorAll('[data-unlink]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      if (!confirm('Удалить привязку?')) return;
+      fetch('/profile/social/' + btn.dataset.unlink + '/unlink', {
+        method: 'POST',
+        credentials: 'same-origin'
+      }).then(function (res) {
+        if (res.ok) location.reload();
+        else showError('Не удалось удалить привязку');
+      });
+    });
+  });
+})();
+</script>
+</body>
+</html>
